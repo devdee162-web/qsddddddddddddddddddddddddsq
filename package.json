@@ -23,6 +23,7 @@
         "buildInstaller": "node scripts/build-installer.cjs",
         "buildInstaller:full": "pnpm run buildDesktop && pnpm run buildStandalone && node electron-builder.config.cjs && node scripts/build-installer.cjs",
         "publishRelease": "node scripts/publish-release.cjs",
+        "publishRelease:github": "node scripts/publish-release.cjs --upload",
         "buildWeb": "node --require=./scripts/suppressExperimentalWarnings.js scripts/build/buildWeb.mjs",
         "buildWebStandalone": "pnpm buildWeb --standalone",
         "buildReporter": "pnpm buildWebStandalone --reporter --skip-extension",

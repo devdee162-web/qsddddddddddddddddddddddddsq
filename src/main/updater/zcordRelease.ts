@@ -82,6 +82,11 @@ export function assetName(relPath: string): string {
     return "f_" + relPath.replace(/[/\\]/g, "__");
 }
 
+export function pathFromAssetName(name: string): string | null {
+    if (!name.startsWith("f_")) return null;
+    return name.slice(2).replace(/__/g, "/");
+}
+
 export function assetUrl(relPath: string): string {
     return `${RELEASE_BASE}/${assetName(relPath)}`;
 }
@@ -184,6 +189,27 @@ export async function fetchFilesManifest(): Promise<FilesManifest | null> {
     return null;
 }
 
+function buildFileMapFromGithubAssets(
+    assets: Array<{ name?: string; browser_download_url?: string; size?: number }>,
+    manifest: FilesManifest
+): Record<string, FileEntry> {
+    const map: Record<string, FileEntry> = {};
+    for (const a of assets) {
+        if (!a.name || !a.browser_download_url) continue;
+        const rel = pathFromAssetName(a.name);
+        if (!rel) continue;
+        const meta = manifest.files[rel];
+        if (!meta?.sha256) continue;
+        if (!isAllowedUpdateUrl(a.browser_download_url)) continue;
+        map[rel] = {
+            sha256: meta.sha256,
+            size: meta.size ?? a.size ?? 0,
+            url: a.browser_download_url
+        };
+    }
+    return map;
+}
+
 function buildFileMap(update: UpdateManifest, manifest: FilesManifest): Record<string, FileEntry> {
     const map: Record<string, FileEntry> = {};
     for (const [rel, meta] of Object.entries(update.files ?? {})) {
@@ -221,6 +247,13 @@ function pickSetupAsset(assets: any[]): ReleaseInfo | null {
 }
 
 export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
+    let ghRelease: { tag_name?: string; assets?: any[] } | null = null;
+    try {
+        ghRelease = await githubGet("/releases/latest");
+    } catch (e) {
+        console.warn("[Zcord] GitHub releases/latest:", e instanceof Error ? e.message : e);
+    }
+
     const update = await fetchUpdateJson();
     let manifest = await fetchFilesManifest();
 
@@ -232,38 +265,54 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
         } catch {}
     }
 
-    const ver = (update?.version ?? manifest?.version ?? "").trim();
+    const ver = (
+        update?.version
+        ?? manifest?.version
+        ?? ghRelease?.tag_name
+        ?? ""
+    ).trim();
     if (!ver || !isNewerVersion(CURRENT_VERSION, ver)) return null;
 
     const tag = ver.startsWith("v") ? ver : `v${ver}`;
-    if (manifest) manifest.version = tag;
+    const baseManifest: FilesManifest = manifest ?? { version: tag, files: {} };
+    baseManifest.version = tag;
 
-    if (manifest && (update?.files || Object.keys(manifest.files).length)) {
-        const fileMap = buildFileMap(update ?? {}, manifest);
-        if (Object.keys(fileMap).length || getNeededFiles(manifest).length) {
+    let fileMap = buildFileMap(update ?? {}, baseManifest);
+    if (ghRelease?.assets?.length) {
+        fileMap = { ...buildFileMapFromGithubAssets(ghRelease.assets, baseManifest), ...fileMap };
+    }
+
+    const needed = Object.keys(baseManifest.files).length
+        ? getNeededFiles(baseManifest)
+        : [];
+
+    if (needed.length) {
+        const neededMap: Record<string, FileEntry> = {};
+        for (const rel of needed) {
+            const entry = fileMap[rel] ?? baseManifest.files[rel];
+            if (entry?.sha256) {
+                neededMap[rel] = { ...entry, url: entry.url ?? assetUrl(rel) };
+            }
+        }
+        if (Object.keys(neededMap).length) {
             return {
                 kind: "files",
                 url: "",
                 version: tag,
                 fileName: "",
-                manifest,
-                fileMap
+                manifest: baseManifest,
+                fileMap: neededMap
             };
         }
     }
 
-    try {
-        const data = await githubGet("/releases/latest");
-        if (data.tag_name && isNewerVersion(CURRENT_VERSION, data.tag_name)) {
-            const setup = pickSetupAsset(data.assets ?? []);
-            if (setup) {
-                setup.version = data.tag_name;
-                if (manifest) setup.manifest = manifest;
-                return setup;
-            }
+    if (ghRelease?.assets?.length) {
+        const setup = pickSetupAsset(ghRelease.assets);
+        if (setup) {
+            setup.version = tag;
+            setup.manifest = baseManifest;
+            return setup;
         }
-    } catch (e) {
-        console.warn("[Zcord] GitHub releases/latest:", e instanceof Error ? e.message : e);
     }
 
     const setupUrl = update?.setupUrl?.trim();
@@ -273,7 +322,7 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
             url: setupUrl,
             version: tag,
             fileName: "Zcord-Setup.exe",
-            manifest: manifest ?? { version: tag, files: {} },
+            manifest: baseManifest,
             fileMap: {}
         };
     }
@@ -366,7 +415,8 @@ function copyIntoStaging(stagingRoot: string, rel: string, tmpPath: string) {
 /** Telecharge et applique fichier par fichier — pas de ZIP */
 export async function applyFileUpdates(
     manifest: FilesManifest,
-    fileMap: Record<string, FileEntry>
+    fileMap: Record<string, FileEntry>,
+    onProgress?: (current: number, total: number, file: string) => void
 ): Promise<{ needsRestart: boolean }> {
     const root = getInstallRoot();
     const needed = getNeededFiles(manifest, root);
@@ -378,8 +428,10 @@ export async function applyFileUpdates(
 
     let needsRestart = false;
     let applied = 0;
+    const total = needed.length;
 
     for (const rel of needed) {
+        onProgress?.(applied + 1, total, rel);
         const entry = fileMap[rel] ?? manifest.files[rel];
         if (!entry?.sha256) {
             console.warn("[Zcord] Pas d'URL pour:", rel);
@@ -426,6 +478,15 @@ export async function applyFileUpdates(
     if (needsRestart && existsSync(stagingDir) && readdirSync(stagingDir).length) {
         stageForRestart(stagingDir, manifest.version);
     }
+
+    try {
+        const marker = join(getInstallRoot(), "Data", "zcord-version.json");
+        mkdirSync(dirname(marker), { recursive: true });
+        writeFileSync(marker, JSON.stringify({
+            version: manifest.version,
+            updatedAt: Date.now()
+        }), "utf8");
+    } catch {}
 
     return { needsRestart };
 }

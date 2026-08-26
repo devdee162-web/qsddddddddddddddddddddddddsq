@@ -1,0 +1,43 @@
+name: Zcord Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_only:
+        description: "Skip build, upload existing release/ folder"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build release package
+        if: inputs.upload_only != 'true'
+        run: pnpm run publishRelease
+
+      - name: Upload GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-release.cjs --upload

@@ -1,8 +1,7 @@
 name: Release
+# Desactive pour Zcord — utilise .github/workflows/zcord-release.yml
 on:
-    push:
-        branches:
-            - main
+    workflow_dispatch:
 
 env:
     FORCE_COLOR: true

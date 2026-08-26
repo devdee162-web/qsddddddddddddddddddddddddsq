@@ -1,7 +1,11 @@
 /**
- * Release GitHub: Setup + fichiers individuels (sans ZIP)
+ * Release GitHub: build + fichiers individuels + upload optionnel (gh cli)
+ *
+ * Usage:
+ *   node scripts/publish-release.cjs          — prepare release/ locally
+ *   node scripts/publish-release.cjs --upload — prepare + gh release create/upload
  */
-const { execSync } = require("child_process");
+const { execSync, spawnSync } = require("child_process");
 const crypto = require("crypto");
 const {
     existsSync, statSync, writeFileSync, rmSync,
@@ -17,8 +21,10 @@ const UPDATE_ASSETS = join(RELEASE, "update-assets");
 const SETUP = join(RELEASE, "Zcord-Setup.exe");
 const MANIFEST_OUT = join(RELEASE, "files-manifest.json");
 const MANIFEST_PREV = join(RELEASE, "files-manifest.prev.json");
+const UPDATE_JSON = join(RELEASE, "update.json");
 const { owner, repo } = require(join(ROOT, "GITHUB.json"));
 
+const UPLOAD = process.argv.includes("--upload");
 const REPO_URL = `https://github.com/${owner}/${repo}`;
 const RELEASE_BASE = `${REPO_URL}/releases/latest/download`;
 
@@ -62,6 +68,86 @@ function walkManifest(dir, base = "") {
     return files;
 }
 
+function collectUploadPaths() {
+    const paths = [SETUP, UPDATE_JSON, MANIFEST_OUT];
+    if (existsSync(UPDATE_ASSETS)) {
+        for (const f of readdirSync(UPDATE_ASSETS)) {
+            paths.push(join(UPDATE_ASSETS, f));
+        }
+    }
+    return paths.filter(p => existsSync(p));
+}
+
+function ghAvailable() {
+    const r = spawnSync("gh", ["--version"], { encoding: "utf8", shell: true });
+    return r.status === 0;
+}
+
+function uploadToGithub(tag) {
+    if (!ghAvailable()) {
+        console.error("[publish] GitHub CLI (gh) introuvable.");
+        console.error("  Installe: winget install GitHub.cli");
+        console.error("  Puis: gh auth login");
+        process.exit(1);
+    }
+
+    const allFiles = collectUploadPaths();
+    if (!allFiles.length) {
+        console.error("[publish] Aucun fichier a uploader.");
+        process.exit(1);
+    }
+
+    const core = [SETUP, UPDATE_JSON, MANIFEST_OUT].filter(p => existsSync(p));
+    const assets = allFiles.filter(p => !core.includes(p));
+
+    const view = spawnSync("gh", ["release", "view", tag, "-R", `${owner}/${repo}`], {
+        encoding: "utf8",
+        shell: true
+    });
+    const releaseExists = view.status === 0;
+
+    console.log(`[publish] Upload GitHub ${tag} — ${core.length} core + ${assets.length} assets`);
+
+    if (!releaseExists) {
+        console.log("[publish] Premiere release — Setup + manifests (assets MAJ au prochain publish)");
+        const create = spawnSync(
+            "gh",
+            [
+                "release", "create", tag,
+                ...core,
+                "--title", tag,
+                "--notes", `Zcord ${tag}\n\nInstall: Zcord-Setup.exe\nMAJ auto via GitHub Releases.`,
+                "-R", `${owner}/${repo}`
+            ],
+            { cwd: ROOT, stdio: "inherit", shell: true }
+        );
+        if (create.status !== 0) process.exit(create.status ?? 1);
+    } else {
+        const upCore = spawnSync(
+            "gh",
+            ["release", "upload", tag, ...core, "--clobber", "-R", `${owner}/${repo}`],
+            { cwd: ROOT, stdio: "inherit", shell: true }
+        );
+        if (upCore.status !== 0) process.exit(upCore.status ?? 1);
+    }
+
+    if (assets.length && releaseExists) {
+        const BATCH = 40;
+        for (let i = 0; i < assets.length; i += BATCH) {
+            const batch = assets.slice(i, i + BATCH);
+            console.log(`[publish] Assets ${i + 1}-${Math.min(i + BATCH, assets.length)} / ${assets.length}`);
+            const up = spawnSync(
+                "gh",
+                ["release", "upload", tag, ...batch, "--clobber", "-R", `${owner}/${repo}`],
+                { cwd: ROOT, stdio: "inherit", shell: true }
+            );
+            if (up.status !== 0) process.exit(up.status ?? 1);
+        }
+    }
+
+    console.log(`[publish] OK — ${REPO_URL}/releases/tag/${tag}`);
+}
+
 function main() {
     if (!existsSync(SETUP)) {
         console.log("[publish] Build Zcord-Setup.exe...");
@@ -96,8 +182,9 @@ function main() {
 
     const updateFiles = {};
     let totalBytes = 0;
+    const toPublish = changed.length ? changed : Object.entries(files);
 
-    for (const [rel, meta] of changed) {
+    for (const [rel, meta] of toPublish) {
         const src = join(STAGING, rel.replace(/\//g, "\\"));
         const asset = assetName(rel);
         const dst = join(UPDATE_ASSETS, asset);
@@ -112,7 +199,7 @@ function main() {
 
     writeFileSync(MANIFEST_PREV, JSON.stringify(manifest, null, 2), "utf8");
 
-    writeFileSync(join(RELEASE, "update.json"), JSON.stringify({
+    writeFileSync(UPDATE_JSON, JSON.stringify({
         version: tag,
         setupUrl: `${RELEASE_BASE}/Zcord-Setup.exe`,
         manifestUrl: `${RELEASE_BASE}/files-manifest.json`,
@@ -124,19 +211,21 @@ function main() {
 
     console.log("");
     console.log("========================================");
-    console.log(`  Publie sur GitHub: ${REPO_URL}/releases`);
-    console.log(`  - Zcord-Setup.exe (${setupMb} Mo)  [1ere install]`);
-    console.log("  - files-manifest.json");
-    console.log("  - update.json");
-    console.log(`  - update-assets/ (${changed.length} fichiers, ${patchMb} Mo)`);
+    console.log(`  GitHub: ${REPO_URL}/releases`);
     console.log(`  Tag: ${tag}`);
-    console.log("");
-    console.log("  gh release create " + tag + " \\");
-    console.log("    release/Zcord-Setup.exe \\");
-    console.log("    release/update.json \\");
-    console.log("    release/files-manifest.json \\");
-    console.log("    release/update-assets/*");
+    console.log(`  - Zcord-Setup.exe (${setupMb} Mo)`);
+    console.log(`  - update.json + files-manifest.json`);
+    console.log(`  - ${toPublish.length} fichiers MAJ (${patchMb} Mo)`);
     console.log("========================================");
+
+    if (UPLOAD) {
+        uploadToGithub(tag);
+    } else {
+        console.log("");
+        console.log("  Upload:");
+        console.log("  node scripts/publish-release.cjs --upload");
+        console.log("  (requiert: gh auth login)");
+    }
 }
 
 main();

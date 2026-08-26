@@ -1,8 +1,7 @@
 name: Release Browser Extension
+# Desactive pour Zcord — pas d'extension navigateur publiee ici
 on:
-    push:
-        branches:
-            - main
+    workflow_dispatch:
 
 env:
     FORCE_COLOR: true

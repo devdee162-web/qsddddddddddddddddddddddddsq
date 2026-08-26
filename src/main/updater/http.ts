@@ -74,7 +74,10 @@ async function applyUpdate(): Promise<boolean> {
 
     try {
         if (pending.kind === "files") {
-            const { needsRestart } = await applyFileUpdates(pending.manifest, pending.fileMap);
+            await applyFileUpdates(pending.manifest, pending.fileMap, (cur, tot, file) => {
+                notifyRenderer("downloading", `${cur}/${tot}`);
+                console.log(`[Zcord] MAJ ${cur}/${tot}: ${file}`);
+            });
             pending = null;
             pendingLocalPath = null;
             setImmediate(() => app.relaunch());
