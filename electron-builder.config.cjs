@@ -226,18 +226,13 @@ function buildZcordFromDiscord(discordApp) {
         if (existsSync(join(equicordDist, f))) cpSync(join(equicordDist, f), join(outDist, f));
     }
 
+    // preload.js = dist/desktop/preload.ts compilé + globalPaths-fix (scripts/patch-desktop-preload.cjs)
+
     // Vues zcord://static/… (first-launch, about, …)
     const staticSrc = join(__dirname, "static");
     if (existsSync(staticSrc)) {
         cpSync(staticSrc, join(outApp, "static"), { recursive: true });
         console.log("[zcord] static/ copié dans resources/app/static");
-    }
-
-    const zcordPreload = join(__dirname, "zcord-preload.js");
-    if (existsSync(zcordPreload)) {
-        cpSync(zcordPreload, join(outDist, "preload.js"));
-    } else if (existsSync(join(__dirname, "dist", "desktop", "preload.js"))) {
-        cpSync(join(__dirname, "dist", "desktop", "preload.js"), join(outDist, "preload.js"));
     }
 
     // FFmpeg et YT-DLP (cherche dans le dossier local ou PATH)
@@ -340,12 +335,18 @@ function obfuscateDesktop() {
 }
 
 // ─── Execution du build ───────────────────────────────────────────────────────
+// Ne lance le build que si ce fichier est execute directement (node electron-builder.config.cjs).
+// electron-builder importe aussi ce module pour lire module.exports — sans Discord sur le runner.
 
-killZcord();
-const discord = findDiscordApp();
-buildEquicord();
-// obfuscateDesktop(); // Optionnel pour l'open source
-buildZcordFromDiscord(discord);
+const isDirectRun = require.main?.filename?.replace(/\\/g, "/").endsWith("electron-builder.config.cjs");
+
+if (isDirectRun) {
+    killZcord();
+    const discord = findDiscordApp();
+    buildEquicord();
+    // obfuscateDesktop(); // Optionnel pour l'open source
+    buildZcordFromDiscord(discord);
+}
 
 module.exports = {
     appId: "com.zcord.app",

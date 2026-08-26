@@ -33,9 +33,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Discord (build dependency)
+        if: inputs.upload_only != 'true'
+        shell: pwsh
+        run: ./scripts/ci-install-discord.ps1
+
       - name: Build release package
         if: inputs.upload_only != 'true'
-        run: pnpm run publishRelease
+        run: pnpm run buildInstaller:full
 
       - name: Upload GitHub Release
         env:
