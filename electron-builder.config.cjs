@@ -287,6 +287,7 @@ function buildZcordFromDiscord(discordApp) {
     // et Windows Smart App Control / WDAC bloque alors le lancement.
     // L'icône Z passe par un raccourci .lnk à côté de l'exe.
     // Installateur uniquement — pas de scripts portable dans le dossier build (usage interne dev).
+    try {
         const exePath = existsSync(zcordExe) ? zcordExe : discordExe;
         if (existsSync(exePath)) {
             const iconForLnk = existsSync(join(outDir, "app.ico"))

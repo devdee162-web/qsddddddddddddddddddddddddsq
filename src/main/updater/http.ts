@@ -14,6 +14,7 @@ import {
     getNeededFiles,
     getOfficialUpdateUrl,
     isAutoUpdateEnabled,
+    isZcordInstalled,
     REPO_URL,
     resolveLatestRelease,
     runSetupInstaller,
@@ -110,6 +111,12 @@ async function runSilentAutoUpdate(): Promise<void> {
 
         pending = release;
         notifyRenderer("checking", release.version);
+
+        if (release.kind === "setup" && isZcordInstalled()) {
+            console.warn("[Zcord] Ignore Setup — MAJ auto par fichiers uniquement");
+            pending = null;
+            return;
+        }
 
         if (release.kind === "files") {
             const manifest = release.manifest ?? await fetchFilesManifest();

@@ -103,6 +103,11 @@ export function getInstallRoot(): string {
     return dirname(process.execPath);
 }
 
+/** Deja installe via Setup — MAJ fichier par fichier uniquement */
+export function isZcordInstalled(): boolean {
+    return existsSync(join(getInstallRoot(), "Zcord.exe"));
+}
+
 export function isAllowedUpdateHost(hostname: string): boolean {
     const h = hostname.toLowerCase();
     return (
@@ -304,9 +309,13 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
                 fileMap: neededMap
             };
         }
+        if (isZcordInstalled()) {
+            console.warn("[Zcord] MAJ fichiers indisponibles — republie les assets sur GitHub");
+            return null;
+        }
     }
 
-    if (ghRelease?.assets?.length) {
+    if (!isZcordInstalled() && ghRelease?.assets?.length) {
         const setup = pickSetupAsset(ghRelease.assets);
         if (setup) {
             setup.version = tag;
@@ -316,7 +325,7 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
     }
 
     const setupUrl = update?.setupUrl?.trim();
-    if (setupUrl && isAllowedUpdateUrl(setupUrl)) {
+    if (!isZcordInstalled() && setupUrl && isAllowedUpdateUrl(setupUrl)) {
         return {
             kind: "setup",
             url: setupUrl,

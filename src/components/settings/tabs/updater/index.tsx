@@ -165,7 +165,7 @@ function UpdaterTab() {
             <Divider className={Margins.top20} />
 
             <Paragraph className={Margins.top16} style={{ fontSize: 12, opacity: 0.6 }}>
-                {t('La mise a jour telecharge Zcord-Setup.exe et reinstalle dans AppData\\Programs\\Zcord. Zcord se ferme puis se relance automatiquement.')}
+                {t("Les mises a jour sont automatiques via GitHub : seuls les fichiers modifies sont telecharges, sans retélécharger Zcord-Setup.exe. Zcord redémarre seul apres l'installation.")}
             </Paragraph>
         </SettingsTab>
     );

@@ -112,7 +112,7 @@ export default definePlugin({
     name: "ZcordUpdater",
     enabledByDefault: true,
     required: true,
-    description: "MAJ auto Zcord en arriere-plan (fichiers individuels, sans ZIP).",
+    description: "MAJ 100% automatique depuis GitHub (sans retélécharger le Setup).",
     authors: [{ name: "Zcord", id: 0n }],
 
     start() {

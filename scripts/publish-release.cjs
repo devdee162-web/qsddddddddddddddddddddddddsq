@@ -79,7 +79,7 @@ function collectUploadPaths() {
 }
 
 function ghAvailable() {
-    const r = spawnSync("gh", ["--version"], { encoding: "utf8", shell: true });
+    const r = spawnSync("gh", ["--version"], { encoding: "utf8", cwd: ROOT });
     return r.status === 0;
 }
 
@@ -91,6 +91,7 @@ function uploadToGithub(tag) {
         process.exit(1);
     }
 
+    const repoFlag = ["-R", `${owner}/${repo}`];
     const allFiles = collectUploadPaths();
     if (!allFiles.length) {
         console.error("[publish] Aucun fichier a uploader.");
@@ -100,46 +101,52 @@ function uploadToGithub(tag) {
     const core = [SETUP, UPDATE_JSON, MANIFEST_OUT].filter(p => existsSync(p));
     const assets = allFiles.filter(p => !core.includes(p));
 
-    const view = spawnSync("gh", ["release", "view", tag, "-R", `${owner}/${repo}`], {
+    const view = spawnSync("gh", ["release", "view", tag, ...repoFlag], {
         encoding: "utf8",
-        shell: true
+        cwd: ROOT
     });
     const releaseExists = view.status === 0;
 
     console.log(`[publish] Upload GitHub ${tag} — ${core.length} core + ${assets.length} assets`);
 
     if (!releaseExists) {
-        console.log("[publish] Premiere release — Setup + manifests (assets MAJ au prochain publish)");
+        console.log("[publish] Creation release (tag + Setup + manifests)...");
         const create = spawnSync(
             "gh",
             [
                 "release", "create", tag,
-                ...core,
+                ...repoFlag,
+                "--target", "main",
                 "--title", tag,
-                "--notes", `Zcord ${tag}\n\nInstall: Zcord-Setup.exe\nMAJ auto via GitHub Releases.`,
-                "-R", `${owner}/${repo}`
+                "--notes", `Zcord ${tag} — Install: Zcord-Setup.exe | MAJ auto via GitHub Releases`,
+                ...core
             ],
-            { cwd: ROOT, stdio: "inherit", shell: true }
+            { cwd: ROOT, stdio: "inherit" }
         );
-        if (create.status !== 0) process.exit(create.status ?? 1);
+        if (create.status !== 0) {
+            console.error("[publish] Echec gh release create.");
+            console.error("  Verifie: gh auth status");
+            console.error(`  Verifie repo: gh repo view ${owner}/${repo}`);
+            process.exit(create.status ?? 1);
+        }
     } else {
         const upCore = spawnSync(
             "gh",
-            ["release", "upload", tag, ...core, "--clobber", "-R", `${owner}/${repo}`],
-            { cwd: ROOT, stdio: "inherit", shell: true }
+            ["release", "upload", tag, ...core, "--clobber", ...repoFlag],
+            { cwd: ROOT, stdio: "inherit" }
         );
         if (upCore.status !== 0) process.exit(upCore.status ?? 1);
     }
 
-    if (assets.length && releaseExists) {
+    if (assets.length) {
         const BATCH = 40;
         for (let i = 0; i < assets.length; i += BATCH) {
             const batch = assets.slice(i, i + BATCH);
             console.log(`[publish] Assets ${i + 1}-${Math.min(i + BATCH, assets.length)} / ${assets.length}`);
             const up = spawnSync(
                 "gh",
-                ["release", "upload", tag, ...batch, "--clobber", "-R", `${owner}/${repo}`],
-                { cwd: ROOT, stdio: "inherit", shell: true }
+                ["release", "upload", tag, ...batch, "--clobber", ...repoFlag],
+                { cwd: ROOT, stdio: "inherit" }
             );
             if (up.status !== 0) process.exit(up.status ?? 1);
         }
@@ -148,11 +155,26 @@ function uploadToGithub(tag) {
     console.log(`[publish] OK — ${REPO_URL}/releases/tag/${tag}`);
 }
 
+function signSetupIfConfigured() {
+    if (!process.env.ZCORD_CERT_FILE || !existsSync(SETUP)) return;
+    console.log("[publish] Signature Authenticode...");
+    const signScript = join(__dirname, "sign-windows.ps1");
+    const r = spawnSync(
+        "powershell",
+        ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", signScript],
+        { cwd: ROOT, stdio: "inherit" }
+    );
+    if (r.status !== 0) {
+        console.warn("[publish] Signature echouee — continue sans signer");
+    }
+}
+
 function main() {
     if (!existsSync(SETUP)) {
         console.log("[publish] Build Zcord-Setup.exe...");
         execSync("node scripts/build-installer.cjs", { cwd: ROOT, stdio: "inherit" });
     }
+    signSetupIfConfigured();
 
     if (existsSync(STAGING)) rmSync(STAGING, { recursive: true, force: true });
     if (!existsSync(join(DIST, "Zcord.exe"))) {
