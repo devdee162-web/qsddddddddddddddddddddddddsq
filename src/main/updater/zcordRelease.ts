@@ -50,6 +50,8 @@ export const SETUP_SILENT_ARGS = [
 const MIN_SETUP_BYTES = 20 * 1024 * 1024;
 const SKIP_MERGE = new Set(["Data", "ZcordData", "Zcord"]);
 const LOCKED_FILES = new Set(["Zcord.exe", "Discord.exe"]);
+/** Toujours appliquer au redemarrage — preload charge par Electron, remplacement a chaud echoue souvent */
+const RESTART_FILES = new Set(["resources/app/dist/desktop/preload.js"]);
 
 export interface FileEntry {
     sha256: string;
@@ -458,10 +460,14 @@ export async function applyFileUpdates(
 
         const dest = join(root, rel.replace(/\//g, "\\"));
         const locked = LOCKED_FILES.has(basename(rel));
+        const restartOnly = RESTART_FILES.has(rel.replace(/\\/g, "/"));
 
-        if (locked) {
+        if (locked || restartOnly) {
             copyIntoStaging(stagingDir, rel, tmp);
             needsRestart = true;
+            if (rel.replace(/\\/g, "/") === "resources/app/dist/desktop/preload.js") {
+                copyIntoStaging(stagingDir, "resources/app/dist/desktop/preload.ref.js", tmp);
+            }
         } else {
             mkdirSync(dirname(dest), { recursive: true });
             try {

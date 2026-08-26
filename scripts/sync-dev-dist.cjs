@@ -11,7 +11,7 @@ const SRC = join(ROOT, "dist", "desktop");
 const DST = join(ROOT, "release", "zcord-dist", "resources", "app", "dist", "desktop");
 const EXE = join(ROOT, "release", "zcord-dist", "Zcord.exe");
 
-const FILES = ["patcher.js", "preload.js", "renderer.js", "renderer.css", "renderer.js.LEGAL.txt"];
+const FILES = ["patcher.js", "preload.js", "preload.ref.js", "renderer.js", "renderer.css", "renderer.js.LEGAL.txt"];
 
 function main() {
     if (!existsSync(SRC)) {
@@ -20,6 +20,9 @@ function main() {
     }
 
     execSync("node scripts/patch-desktop-preload.cjs", { cwd: ROOT, stdio: "inherit" });
+
+    const preload = join(SRC, "preload.js");
+    if (existsSync(preload)) cpSync(preload, join(SRC, "preload.ref.js"));
 
     if (!existsSync(EXE)) {
         console.log("[dev] release/zcord-dist absent — build electron-builder...");
@@ -35,6 +38,21 @@ function main() {
         cpSync(s, join(DST, f));
         n++;
         console.log(`[dev] ${f} (${(statSync(s).size / 1024 / 1024).toFixed(1)} Mo)`);
+    }
+
+    // Install utilisateur (%LocalAppData%/Programs/Zcord)
+    const installDst = join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "resources", "app", "dist", "desktop");
+    if (existsSync(join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "Zcord.exe"))) {
+        mkdirSync(installDst, { recursive: true });
+        for (const f of FILES) {
+            const s = join(SRC, f);
+            if (!existsSync(s)) continue;
+            cpSync(s, join(installDst, f));
+        }
+        const hostLoader = join(ROOT, "scripts", "zcord-host-loader.js");
+        const hostDst = join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "resources", "app", "index.js");
+        if (existsSync(hostLoader)) cpSync(hostLoader, hostDst);
+        console.log(`[dev] Repare aussi → ${installDst}`);
     }
 
     // Source maps utiles en dev

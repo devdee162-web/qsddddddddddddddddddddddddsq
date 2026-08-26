@@ -226,6 +226,11 @@ function buildZcordFromDiscord(discordApp) {
         if (existsSync(join(equicordDist, f))) cpSync(join(equicordDist, f), join(outDist, f));
     }
 
+    // Copie de secours — reparation auto si preload.js legacy bloque l'injection
+    if (existsSync(join(equicordDist, "preload.js"))) {
+        cpSync(join(equicordDist, "preload.js"), join(outDist, "preload.ref.js"));
+    }
+
     // preload.js = dist/desktop/preload.ts compilé + globalPaths-fix (scripts/patch-desktop-preload.cjs)
 
     // Vues zcord://static/… (first-launch, about, …)
