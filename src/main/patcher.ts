@@ -145,117 +145,119 @@ if (!IS_VANILLA) {
                 return;
             }
 
-            // On n'injecte le preload Zcord QUE dans les fenêtres Discord/Zcord légitimes.
-            const ourPreload = join(__dirname, "preload.js");
-            const preloadIsOurs = options.webPreferences.preload === ourPreload;
-            const KNOWN_TITLES = /^(Discord|Vesktop|Equibop)$|^(Zcord|Equicord)|Overlay/i;
-            const isTrustedTitle = !!(options.title && KNOWN_TITLES.test(options.title));
-            const isVBCable = !!(options.title && options.title.includes("VB-Cable"));
-
-            if (options?.webPreferences?.preload && (isTrustedTitle || isVBCable || preloadIsOurs)) {
-                const original = options.webPreferences.preload;
-                const isMainWindow = options.title === "Discord";
-                options.webPreferences.preload = join(__dirname, "preload.js");
-                options.webPreferences.sandbox = false;
-                options.webPreferences.backgroundThrottling = false;
-                options.webPreferences.webviewTag = true;
-
-                let ses = options.webPreferences.session;
-                if (!ses && options.webPreferences.partition) {
-                    ses = electron.session.fromPartition(options.webPreferences.partition);
+            // Comme Vencord : injecter dès qu'il y a un preload Discord + un titre (pas seulement "Discord").
+            // L'ancien filtre KNOWN_TITLES bloquait l'injection → pas de Zcord/Plugins dans les réglages.
+            if (!options?.webPreferences?.preload || !options.title) {
+                if (options && options.title !== "Discord") {
+                    options.backgroundColor ??= "#1e1f22";
                 }
-                ses ??= electron.session.defaultSession;
-                registerMediaPermissionsForSession(ses);
-
-                if (settings.frameless) {
-                    options.frame = false;
-                } else if (settings.mainWindowFrameless && isMainWindow) {
-                    options.frame = false;
-                } else if (process.platform === "win32" && settings.winNativeTitleBar) {
-                    delete options.frame;
-                }
-
-                if (settings.transparent) {
-                    options.transparent = true;
-                    options.backgroundColor = "#00000000";
-                }
-
-                // Windows 11 acrylic/mica effect
-                const winMaterial = settings.windowMaterial as string | undefined;
-                if (process.platform === "win32" && winMaterial && winMaterial !== "none") {
-                    options.transparent = true;
-                    options.backgroundColor = "#00000000";
-                }
-
-                if (settings.disableMinSize) {
-                    options.minWidth = 0;
-                    options.minHeight = 0;
-                }
-
-                const needsVibrancy = process.platform === "darwin" && settings.macosVibrancyStyle;
-
-                if (needsVibrancy) {
-                    options.backgroundColor = "#00000000";
-                    if (settings.macosVibrancyStyle) {
-                        options.vibrancy = settings.macosVibrancyStyle;
-                    }
-                }
-
-                options.fullscreenable = true;
-
-                process.env.DISCORD_PRELOAD = original;
-
-                // Icône Z avant création HWND (sinon barre des tâches = atome Electron)
-                try {
-                    const iconPng = join(dirname(process.execPath), "app.png");
-                    const iconIco = join(dirname(process.execPath), "app.ico");
-                    const resIco = join(process.resourcesPath, "app.ico");
-                    const iconPath = [iconPng, iconIco, resIco].find(p => fsExistsSync(p));
-                    if (iconPath) options.icon = iconPath;
-                } catch {}
-
                 super(options);
+                return;
+            }
 
-                try {
-                    const iconPng = join(dirname(process.execPath), "app.png");
-                    const iconIco = join(dirname(process.execPath), "app.ico");
-                    const resIco = join(process.resourcesPath, "app.ico");
-                    const iconPath = [iconPng, iconIco, resIco].find(p => fsExistsSync(p)) ?? null;
-                    if (iconPath) {
-                        const nativeSetIcon = this.setIcon.bind(this);
-                        this.setIcon = () => nativeSetIcon(iconPath);
-                        nativeSetIcon(iconPath);
-                        this.once("ready-to-show", () => { try { nativeSetIcon(iconPath); } catch {} });
-                        this.webContents?.on("did-finish-load", () => { try { nativeSetIcon(iconPath); } catch {} });
-                        this.on("show", () => { try { nativeSetIcon(iconPath); } catch {} });
-                        this.on("focus", () => { try { nativeSetIcon(iconPath); } catch {} });
-                    }
-                } catch {}
+            const original = options.webPreferences.preload;
+            const isMainWindow = options.title === "Discord" || options.title === "Zcord";
+            options.webPreferences.preload = join(__dirname, "preload.js");
+            options.webPreferences.sandbox = false;
+            options.webPreferences.backgroundThrottling = false;
+            options.webPreferences.webviewTag = true;
 
-                // Titre fixe (pas discord.com/app?... dans la barre de titre)
-                try {
-                    const nativeSetTitle = this.setTitle.bind(this);
-                    this.setTitle = (title?: string) => {
-                        const next = title || "";
-                        if (/overlay/i.test(next)) return nativeSetTitle(next);
-                        return nativeSetTitle("Zcord");
-                    };
-                    this.setTitle("Zcord");
-                    this.on("page-title-updated", e => {
-                        e.preventDefault();
-                        try { nativeSetTitle("Zcord"); } catch {}
-                    });
-                } catch {}
+            let ses = options.webPreferences.session;
+            if (!ses && options.webPreferences.partition) {
+                ses = electron.session.fromPartition(options.webPreferences.partition);
+            }
+            ses ??= electron.session.defaultSession;
+            registerMediaPermissionsForSession(ses);
 
-                if (settings.streamProof) {
-                    try {
-                        this.setContentProtection(true);
-                    } catch (e) {
-                        console.error("Failed to set content protection on startup:", e);
-                    }
+            if (settings.frameless) {
+                options.frame = false;
+            } else if (settings.mainWindowFrameless && isMainWindow) {
+                options.frame = false;
+            } else if (process.platform === "win32" && settings.winNativeTitleBar) {
+                delete options.frame;
+            }
+
+            if (settings.transparent) {
+                options.transparent = true;
+                options.backgroundColor = "#00000000";
+            }
+
+            // Windows 11 acrylic/mica effect
+            const winMaterial = settings.windowMaterial as string | undefined;
+            if (process.platform === "win32" && winMaterial && winMaterial !== "none") {
+                options.transparent = true;
+                options.backgroundColor = "#00000000";
+            }
+
+            if (settings.disableMinSize) {
+                options.minWidth = 0;
+                options.minHeight = 0;
+            }
+
+            const needsVibrancy = process.platform === "darwin" && settings.macosVibrancyStyle;
+
+            if (needsVibrancy) {
+                options.backgroundColor = "#00000000";
+                if (settings.macosVibrancyStyle) {
+                    options.vibrancy = settings.macosVibrancyStyle;
                 }
+            }
 
-                const isTransparent = !!options.transparent;
+            options.fullscreenable = true;
+
+            process.env.DISCORD_PRELOAD = original;
+
+            // Icône Z avant création HWND (sinon barre des tâches = atome Electron)
+            try {
+                const iconPng = join(dirname(process.execPath), "app.png");
+                const iconIco = join(dirname(process.execPath), "app.ico");
+                const resIco = join(process.resourcesPath, "app.ico");
+                const iconPath = [iconPng, iconIco, resIco].find(p => fsExistsSync(p));
+                if (iconPath) options.icon = iconPath;
+            } catch {}
+
+            super(options);
+
+            try {
+                const iconPng = join(dirname(process.execPath), "app.png");
+                const iconIco = join(dirname(process.execPath), "app.ico");
+                const resIco = join(process.resourcesPath, "app.ico");
+                const iconPath = [iconPng, iconIco, resIco].find(p => fsExistsSync(p)) ?? null;
+                if (iconPath) {
+                    const nativeSetIcon = this.setIcon.bind(this);
+                    this.setIcon = () => nativeSetIcon(iconPath);
+                    nativeSetIcon(iconPath);
+                    this.once("ready-to-show", () => { try { nativeSetIcon(iconPath); } catch {} });
+                    this.webContents?.on("did-finish-load", () => { try { nativeSetIcon(iconPath); } catch {} });
+                    this.on("show", () => { try { nativeSetIcon(iconPath); } catch {} });
+                    this.on("focus", () => { try { nativeSetIcon(iconPath); } catch {} });
+                }
+            } catch {}
+
+            // Titre fixe (pas discord.com/app?... dans la barre de titre)
+            try {
+                const nativeSetTitle = this.setTitle.bind(this);
+                this.setTitle = (title?: string) => {
+                    const next = title || "";
+                    if (/overlay/i.test(next)) return nativeSetTitle(next);
+                    return nativeSetTitle("Zcord");
+                };
+                this.setTitle("Zcord");
+                this.on("page-title-updated", e => {
+                    e.preventDefault();
+                    try { nativeSetTitle("Zcord"); } catch {}
+                });
+            } catch {}
+
+            if (settings.streamProof) {
+                try {
+                    this.setContentProtection(true);
+                } catch (e) {
+                    console.error("Failed to set content protection on startup:", e);
+                }
+            }
+
+            const isTransparent = !!options.transparent;
                 let isFakeFullScreen = false;
                 let originalBounds: electron.Rectangle | null = null;
                 let isMaximizedBefore = false;
@@ -346,14 +348,8 @@ if (!IS_VANILLA) {
                     }
                 }
 
-                if (settings.disableMinSize) {
-                    this.setMinimumSize = (_width: number, _height: number) => { };
-                }
-            } else {
-                if (options && options.title !== "Discord") {
-                    options.backgroundColor ??= "#1e1f22";
-                }
-                super(options);
+            if (settings.disableMinSize) {
+                this.setMinimumSize = (_width: number, _height: number) => { };
             }
         }
     }

@@ -18,6 +18,7 @@ import {
     REPO_URL,
     resolveLatestRelease,
     runSetupInstaller,
+    shouldRunAutoUpdate,
     type ReleaseInfo
 } from "./zcordRelease";
 
@@ -75,15 +76,20 @@ async function applyUpdate(): Promise<boolean> {
 
     try {
         if (pending.kind === "files") {
-            await applyFileUpdates(pending.manifest, pending.fileMap, (cur, tot, file) => {
+            const { needsRestart } = await applyFileUpdates(pending.manifest, pending.fileMap, (cur, tot, file) => {
                 notifyRenderer("downloading", `${cur}/${tot}`);
                 console.log(`[Zcord] MAJ ${cur}/${tot}: ${file}`);
             });
             pending = null;
             pendingLocalPath = null;
-            setImmediate(() => app.relaunch());
-            setImmediate(() => app.quit());
-            return true;
+            if (needsRestart) {
+                notifyRenderer("restarting", "");
+                setImmediate(() => app.relaunch());
+                setImmediate(() => app.quit());
+                return true;
+            }
+            notifyRenderer("idle", "");
+            return false;
         }
 
         const localPath = pendingLocalPath;
@@ -102,7 +108,7 @@ async function applyUpdate(): Promise<boolean> {
 }
 
 async function runSilentAutoUpdate(): Promise<void> {
-    if (autoUpdateRunning || isApplying || !isAutoUpdateEnabled()) return;
+    if (autoUpdateRunning || isApplying || !shouldRunAutoUpdate()) return;
     autoUpdateRunning = true;
 
     try {
@@ -115,6 +121,7 @@ async function runSilentAutoUpdate(): Promise<void> {
         if (release.kind === "setup" && isZcordInstalled()) {
             console.warn("[Zcord] Ignore Setup — MAJ auto par fichiers uniquement");
             pending = null;
+            notifyRenderer("idle", "");
             return;
         }
 
@@ -125,6 +132,7 @@ async function runSilentAutoUpdate(): Promise<void> {
                 if (needed.length === 0) {
                     console.log("[Zcord] Deja a jour");
                     pending = null;
+                    notifyRenderer("idle", "");
                     return;
                 }
                 console.log(`[Zcord] ${needed.length} fichier(s) a mettre a jour`);
@@ -136,17 +144,22 @@ async function runSilentAutoUpdate(): Promise<void> {
         }
 
         notifyRenderer("installing", release.version);
-        await applyUpdate();
+        const applied = await applyUpdate();
+        if (!applied) notifyRenderer("idle", "");
     } catch (e) {
-        console.warn("[Zcord] MAJ auto:", e instanceof Error ? e.message : e);
-        notifyRenderer("error", e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[Zcord] MAJ auto:", msg);
+        notifyRenderer("idle", "");
     } finally {
         autoUpdateRunning = false;
     }
 }
 
 function startBackgroundUpdater() {
-    if (process.platform !== "win32") return;
+    if (!shouldRunAutoUpdate()) {
+        console.log("[Zcord] MAJ auto desactivee (dev/portable ou reglages)");
+        return;
+    }
     const run = () => { runSilentAutoUpdate().catch(() => {}); };
     setTimeout(run, 20_000);
     setInterval(run, 6 * 60 * 60 * 1000);

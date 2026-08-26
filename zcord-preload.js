@@ -47,6 +47,8 @@
 
 // ─── Equicord preload avec contextBridge ─────────────────────────────────────
 "use strict";
+const path = require("path");
+const fs = require("fs");
 const { ipcRenderer, contextBridge, webFrame } = require("electron");
 
 function r(e, ...o) { return ipcRenderer.invoke(e, ...o); }

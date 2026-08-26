@@ -476,12 +476,13 @@ export async function applyFileUpdates(
     }
 
     if (applied === 0) {
-        throw new Error("Aucun fichier telecharge — verifie la release GitHub");
+        console.warn("[Zcord] MAJ: aucun fichier telecharge (assets GitHub manquants ou reseau)");
+        return { needsRestart: false };
     }
 
     const remaining = getNeededFiles(manifest, root);
     if (remaining.length && !needsRestart) {
-        throw new Error(`${remaining.length} fichier(s) restant(s) — republie la release`);
+        console.warn(`[Zcord] ${remaining.length} fichier(s) restant(s) — nouvel essai au prochain cycle`);
     }
 
     if (needsRestart && existsSync(stagingDir) && readdirSync(stagingDir).length) {
@@ -566,6 +567,7 @@ export function isAutoUpdateEnabled(): boolean {
     const candidates = [
         join(root, "ZcordData", "settings", "settings.json"),
         join(root, "Data", "ZcordData", "settings", "settings.json"),
+        join(root, "Data", "settings", "settings.json"),
     ];
     for (const p of candidates) {
         if (!existsSync(p)) continue;
@@ -575,6 +577,20 @@ export function isAutoUpdateEnabled(): boolean {
         } catch {}
     }
     return true;
+}
+
+/** MAJ auto uniquement pour les installs Zcord reelles — pas dev/electron/release. */
+export function shouldRunAutoUpdate(): boolean {
+    if (process.platform !== "win32") return false;
+    if (!isAutoUpdateEnabled()) return false;
+
+    const exec = process.execPath.replace(/\//g, "\\").toLowerCase();
+    if (exec.endsWith("\\electron.exe")) return false;
+    if (exec.includes("\\node_modules\\electron\\")) return false;
+    if (exec.includes("\\release\\zcord-dist\\")) return false;
+    if (exec.includes("\\desktop\\zcord\\")) return false;
+
+    return existsSync(join(getInstallRoot(), "Zcord.exe"));
 }
 
 if (process.platform === "win32") {

@@ -122,13 +122,30 @@ export default definePlugin({
         if (document.readyState === "complete") mountWhenReady();
         else window.addEventListener("load", mountWhenReady, { once: true });
 
+        let errorTimer: ReturnType<typeof setTimeout> | undefined;
+
         VencordNative.zcord.onUpdateStatus((status, detail) => {
             if (status === "checking") updatePhase = "checking";
             else if (status === "downloading") updatePhase = "downloading";
             else if (status === "installing") updatePhase = "installing";
-            else if (status === "error") { updatePhase = "error"; updateDetail = detail; }
-            else updatePhase = "idle";
-            if (status !== "error") updateDetail = detail;
+            else if (status === "restarting") updatePhase = "restarting";
+            else if (status === "error") {
+                updatePhase = "error";
+                updateDetail = detail;
+                clearTimeout(errorTimer);
+                errorTimer = setTimeout(() => {
+                    if (updatePhase === "error") {
+                        updatePhase = "idle";
+                        updateDetail = "";
+                        notify();
+                    }
+                }, 10_000);
+            } else updatePhase = "idle";
+
+            if (status !== "error") {
+                clearTimeout(errorTimer);
+                updateDetail = detail;
+            }
             notify();
         });
     },

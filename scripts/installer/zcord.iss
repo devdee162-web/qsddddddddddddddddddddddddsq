@@ -1,6 +1,6 @@
 ; Zcord Windows Installer — installe comme une vraie application
 #define MyAppName "Zcord"
-#define MyAppVersion "1.26.3"
+#define MyAppVersion "1.26.5"
 #define MyAppPublisher "Zcord"
 #define MyAppURL "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq"
 #define MyAppExeName "Zcord.exe"

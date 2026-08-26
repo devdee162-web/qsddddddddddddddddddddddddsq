@@ -232,6 +232,14 @@ const buildConfigs = ([
 
 await buildOrWatchAll(buildConfigs);
 
+if (!watch) {
+    const { execSync } = await import("child_process");
+    execSync("node scripts/patch-desktop-preload.cjs", {
+        cwd: join(dirname(fileURLToPath(import.meta.url)), "..", ".."),
+        stdio: "inherit"
+    });
+}
+
 await Promise.all([
     writeFile("dist/desktop/package.json", JSON.stringify({
         name: "zcord",
