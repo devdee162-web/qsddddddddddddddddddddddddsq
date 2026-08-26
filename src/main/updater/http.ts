@@ -76,10 +76,30 @@ async function applyUpdate(): Promise<boolean> {
 
     try {
         if (pending.kind === "files") {
-            const { needsRestart } = await applyFileUpdates(pending.manifest, pending.fileMap, (cur, tot, file) => {
-                notifyRenderer("downloading", `${cur}/${tot}`);
-                console.log(`[Zcord] MAJ ${cur}/${tot}: ${file}`);
-            });
+            let needsRestart = false;
+            try {
+                ({ needsRestart } = await applyFileUpdates(pending.manifest, pending.fileMap, (cur, tot, file) => {
+                    notifyRenderer("downloading", `${cur}/${tot}`);
+                    console.log(`[Zcord] MAJ ${cur}/${tot}: ${file}`);
+                }));
+            } catch (e) {
+                if (isZcordInstalled()) {
+                    console.warn("[Zcord] Delta echoue — fallback Setup:", e instanceof Error ? e.message : e);
+                    const setup = await resolveLatestRelease();
+                    if (setup?.kind === "setup") {
+                        pending = setup;
+                        await downloadUpdate();
+                        notifyRenderer("installing", setup.version);
+                        await runSetupInstaller(pendingLocalPath!);
+                        try { if (pendingLocalPath) rmSync(pendingLocalPath, { force: true }); } catch {}
+                        pending = null;
+                        pendingLocalPath = null;
+                        setImmediate(() => app.quit());
+                        return true;
+                    }
+                }
+                throw e;
+            }
             pending = null;
             pendingLocalPath = null;
             if (needsRestart) {
@@ -118,14 +138,10 @@ async function runSilentAutoUpdate(): Promise<void> {
         pending = release;
         notifyRenderer("checking", release.version);
 
-        if (release.kind === "setup" && isZcordInstalled()) {
-            console.warn("[Zcord] Ignore Setup — MAJ auto par fichiers uniquement");
-            pending = null;
-            notifyRenderer("idle", "");
-            return;
-        }
-
-        if (release.kind === "files") {
+        if (release.kind === "setup") {
+            notifyRenderer("downloading", release.version);
+            await downloadUpdate();
+        } else if (release.kind === "files") {
             const manifest = release.manifest ?? await fetchFilesManifest();
             if (manifest) {
                 const needed = getNeededFiles(manifest);

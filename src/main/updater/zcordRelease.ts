@@ -227,13 +227,35 @@ function buildFileMap(update: UpdateManifest, manifest: FilesManifest): Record<s
             url: meta.url && isAllowedUpdateUrl(meta.url) ? meta.url : assetUrl(rel)
         };
     }
-    for (const rel of getNeededFiles(manifest)) {
-        if (map[rel]) continue;
-        const meta = manifest.files[rel];
-        if (!meta) continue;
-        map[rel] = { ...meta, url: assetUrl(rel) };
-    }
     return map;
+}
+
+function resolveSetupRelease(
+    tag: string,
+    ghRelease: { assets?: any[] } | null,
+    baseManifest: FilesManifest,
+    setupUrl?: string
+): ReleaseInfo | null {
+    if (ghRelease?.assets?.length) {
+        const setup = pickSetupAsset(ghRelease.assets);
+        if (setup) {
+            setup.version = tag;
+            setup.manifest = baseManifest;
+            return setup;
+        }
+    }
+    const url = setupUrl?.trim();
+    if (url && isAllowedUpdateUrl(url)) {
+        return {
+            kind: "setup",
+            url,
+            version: tag,
+            fileName: "Zcord-Setup.exe",
+            manifest: baseManifest,
+            fileMap: {}
+        };
+    }
+    return null;
 }
 
 function pickSetupAsset(assets: any[]): ReleaseInfo | null {
@@ -293,15 +315,26 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
         ? getNeededFiles(baseManifest)
         : [];
 
+    const deltaNeeded = needed.filter(rel => fileMap[rel]?.sha256);
+    const deltaIncomplete = needed.length > 0 && deltaNeeded.length < needed.length;
+
     if (needed.length) {
-        const neededMap: Record<string, FileEntry> = {};
-        for (const rel of needed) {
-            const entry = fileMap[rel] ?? baseManifest.files[rel];
-            if (entry?.sha256) {
-                neededMap[rel] = { ...entry, url: entry.url ?? assetUrl(rel) };
+        // v1.26.4 → v1.26.6 : le delta GitHub ne couvre que les fichiers modifies entre releases —
+        // si des fichiers manquent sur la release, on bascule sur Zcord-Setup.exe.
+        if (deltaIncomplete && isZcordInstalled()) {
+            const setup = resolveSetupRelease(tag, ghRelease, baseManifest, update?.setupUrl);
+            if (setup) {
+                console.log(`[Zcord] Delta partiel (${deltaNeeded.length}/${needed.length}) — Setup complet`);
+                return setup;
             }
         }
-        if (Object.keys(neededMap).length) {
+
+        if (deltaNeeded.length) {
+            const neededMap: Record<string, FileEntry> = {};
+            for (const rel of deltaNeeded) {
+                const entry = fileMap[rel]!;
+                neededMap[rel] = { ...entry, url: entry.url ?? assetUrl(rel) };
+            }
             return {
                 kind: "files",
                 url: "",
@@ -311,7 +344,13 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
                 fileMap: neededMap
             };
         }
+
         if (isZcordInstalled()) {
+            const setup = resolveSetupRelease(tag, ghRelease, baseManifest, update?.setupUrl);
+            if (setup) {
+                console.log("[Zcord] Aucun delta applicable — Setup complet");
+                return setup;
+            }
             console.warn("[Zcord] MAJ fichiers indisponibles — republie les assets sur GitHub");
             return null;
         }
@@ -431,7 +470,13 @@ export async function applyFileUpdates(
 ): Promise<{ needsRestart: boolean }> {
     const root = getInstallRoot();
     const needed = getNeededFiles(manifest, root);
-    if (!needed.length) return { needsRestart: false };
+    const toApply = needed.filter(rel => fileMap[rel]?.sha256);
+    if (!toApply.length) {
+        if (needed.length) {
+            throw new Error("Delta indisponible pour cette version — utilise Zcord-Setup.exe");
+        }
+        return { needsRestart: false };
+    }
 
     const stagingDir = join(app.getPath("temp"), "zcord-file-update-staging");
     try { rmSync(stagingDir, { recursive: true, force: true }); } catch {}
@@ -439,20 +484,15 @@ export async function applyFileUpdates(
 
     let needsRestart = false;
     let applied = 0;
-    const total = needed.length;
+    const total = toApply.length;
 
-    for (const rel of needed) {
+    for (const rel of toApply) {
         onProgress?.(applied + 1, total, rel);
-        const entry = fileMap[rel] ?? manifest.files[rel];
-        if (!entry?.sha256) {
-            console.warn("[Zcord] Pas d'URL pour:", rel);
-            continue;
-        }
-        const fullEntry = { ...entry, url: entry.url ?? assetUrl(rel) };
+        const entry = fileMap[rel]!;
 
         let tmp: string | null = null;
         try {
-            tmp = await downloadOneFile(rel, fullEntry);
+            tmp = await downloadOneFile(rel, { ...entry, url: entry.url ?? assetUrl(rel) });
         } catch (e) {
             console.warn("[Zcord] Echec", rel, e instanceof Error ? e.message : e);
             continue;
@@ -482,8 +522,7 @@ export async function applyFileUpdates(
     }
 
     if (applied === 0) {
-        console.warn("[Zcord] MAJ: aucun fichier telecharge (assets GitHub manquants ou reseau)");
-        return { needsRestart: false };
+        throw new Error("Aucun fichier telecharge — verifie la release GitHub");
     }
 
     const remaining = getNeededFiles(manifest, root);
