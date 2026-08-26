@@ -271,7 +271,14 @@ function buildZcordFromDiscord(discordApp) {
 
     if (existsSync(iconSrc)) {
         cpSync(iconSrc, join(outDir, "app.ico"));
+        cpSync(iconSrc, join(outRes, "app.ico"));
         cpSync(iconSrc, join(__dirname, "zcord.ico"));
+    }
+
+    const shortcutPs1 = join(__dirname, "scripts", "create-zcord-shortcut.ps1");
+    if (existsSync(shortcutPs1)) {
+        cpSync(shortcutPs1, join(outApp, "create-zcord-shortcut.ps1"));
+        cpSync(join(__dirname, "scripts", "register-zcord-taskbar.cjs"), join(outApp, "register-zcord-taskbar.cjs"));
     }
 
     if (existsSync(discordExe)) {

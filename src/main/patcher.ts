@@ -560,10 +560,20 @@ app.whenReady().then(() => {
     }
     const iconPng = join(dirname(process.execPath), "app.png");
     const iconIco = join(dirname(process.execPath), "app.ico");
-    const cachedIconPath = [iconPng, iconIco].find(p => fsExistsSync(p));
+    const resIco = join(process.resourcesPath, "app.ico");
+    const cachedIconPath = [iconPng, iconIco, resIco].find(p => fsExistsSync(p));
     const reassert = () => {
         try { app.setAppUserModelId(ZCORD_AUMID); } catch {}
         try { app.setName("Zcord"); } catch {}
+        if (process.platform === "win32") {
+            try {
+                const regBase = "HKCU\\Software\\Classes\\AppUserModelID\\com.zcord.portable";
+                if (cachedIconPath) {
+                    const { execSync } = require("child_process");
+                    execSync(`reg add "${regBase}\\DefaultIcon" /ve /d "${cachedIconPath},0" /f`, { stdio: "ignore" });
+                }
+            } catch {}
+        }
         if (!cachedIconPath) return;
         try {
             for (const win of electron.BrowserWindow.getAllWindows()) {

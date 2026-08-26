@@ -145,6 +145,17 @@ app.setPath = (name, p) => {
 
 const ZCORD_AUMID = "com.zcord.portable";
 
+// Icône Z en barre des tâches (Zcord.exe embarque l'icône Discord)
+try {
+    require(path.join(__dirname, "register-zcord-taskbar.cjs")).registerZcordTaskbar({
+        appRoot: __dirname,
+        resourcesPath: path.join(path.dirname(process.execPath), "resources"),
+        ps1Path: path.join(__dirname, "create-zcord-shortcut.ps1"),
+    });
+} catch (e) {
+    console.warn("[Zcord] Taskbar icon setup:", e?.message);
+}
+
 const origSetAumid = app.setAppUserModelId.bind(app);
 app.setAppUserModelId = (id) => {
     // Discord force souvent com.squirrel.Discord.* → barre des tâches = icône Discord

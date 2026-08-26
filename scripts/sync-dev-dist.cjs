@@ -49,9 +49,17 @@ function main() {
             if (!existsSync(s)) continue;
             cpSync(s, join(installDst, f));
         }
-        const hostLoader = join(ROOT, "scripts", "zcord-host-loader.js");
-        const hostDst = join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "resources", "app", "index.js");
-        if (existsSync(hostLoader)) cpSync(hostLoader, hostDst);
+    const hostLoader = join(ROOT, "scripts", "zcord-host-loader.js");
+    const hostDst = join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "resources", "app", "index.js");
+    if (existsSync(hostLoader)) cpSync(hostLoader, hostDst);
+    for (const f of ["create-zcord-shortcut.ps1", "register-zcord-taskbar.cjs"]) {
+        const s = join(ROOT, "scripts", f);
+        const d = join(process.env.LOCALAPPDATA || "", "Programs", "Zcord", "resources", "app", f);
+        if (existsSync(s)) cpSync(s, d);
+    }
+    try {
+        execSync("node scripts/register-zcord-taskbar.cjs", { cwd: ROOT, stdio: "inherit", env: { ...process.env, ZCORD_REPAIR_ONLY: "1" } });
+    } catch (_) {}
         console.log(`[dev] Repare aussi → ${installDst}`);
     }
 
