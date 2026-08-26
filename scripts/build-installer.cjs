@@ -8,6 +8,7 @@ const {
 const { join } = require("path");
 
 const ROOT = join(__dirname, "..");
+const PKG_VERSION = require(join(ROOT, "package.json")).version;
 const DIST = join(ROOT, "release", "zcord-dist");
 const STAGING = join(ROOT, "release", "zcord-staging");
 const ISS = join(__dirname, "installer", "zcord.iss");
@@ -77,7 +78,11 @@ async function compileInstaller() {
     }
 
     console.log("[installer] Compilation Inno Setup (peut prendre plusieurs minutes)...");
-    await compile(ISS, { gui: false, verbose: true });
+    await compile(ISS, {
+        gui: false,
+        verbose: true,
+        DMyAppVersion: PKG_VERSION
+    });
 }
 
 async function main() {

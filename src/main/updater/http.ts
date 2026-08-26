@@ -13,6 +13,7 @@ import {
     fetchFilesManifest,
     getNeededFiles,
     getOfficialUpdateUrl,
+    isAllowedUpdateUrl,
     isAutoUpdateEnabled,
     isZcordInstalled,
     REPO_URL,
@@ -44,7 +45,7 @@ async function getUpdates() {
     try {
         const outdated = await fetchUpdates();
         if (!outdated || !pending) return [];
-        const label = pending.kind === "files" ? "fichiers" : "setup";
+        const label = pending.kind === "setup" ? "setup complet" : "fichiers";
         return [{
             hash: pending.version,
             author: "Zcord",
@@ -83,13 +84,23 @@ async function applyUpdate(): Promise<boolean> {
                     console.log(`[Zcord] MAJ ${cur}/${tot}: ${file}`);
                 }));
             } catch (e) {
-                if (isZcordInstalled()) {
+                if (isZcordInstalled() && pending) {
                     console.warn("[Zcord] Delta echoue — fallback Setup:", e instanceof Error ? e.message : e);
-                    const setup = await resolveLatestRelease();
-                    if (setup?.kind === "setup") {
-                        pending = setup;
+                    const setupUrl = pending.manifest?.version
+                        ? `${REPO_URL}/releases/download/${pending.manifest.version}/Zcord-Setup.exe`
+                        : getOfficialUpdateUrl();
+                    if (isAllowedUpdateUrl(setupUrl)) {
+                        pending = {
+                            kind: "setup",
+                            url: setupUrl,
+                            version: pending.manifest?.version ?? pending.version,
+                            fileName: "Zcord-Setup.exe",
+                            manifest: pending.manifest,
+                            fileMap: {}
+                        };
+                        notifyRenderer("downloading", pending.version);
                         await downloadUpdate();
-                        notifyRenderer("installing", setup.version);
+                        notifyRenderer("installing", pending.version);
                         await runSetupInstaller(pendingLocalPath!);
                         try { if (pendingLocalPath) rmSync(pendingLocalPath, { force: true }); } catch {}
                         pending = null;

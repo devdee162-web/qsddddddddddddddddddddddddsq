@@ -212,7 +212,11 @@ function buildZcordFromDiscord(discordApp) {
 
     const outApp = join(outRes, "app");
     mkdirSync(outApp, { recursive: true });
-    writeFileSync(join(outApp, "package.json"), JSON.stringify({ name: "zcord", main: "index.js", version: "1.26.2" }, null, 2));
+    writeFileSync(join(outApp, "package.json"), JSON.stringify({
+        name: "zcord",
+        main: "index.js",
+        version: require(join(__dirname, "package.json")).version
+    }, null, 2));
     const hostLoader = join(__dirname, "scripts", "zcord-host-loader.js");
     if (!existsSync(hostLoader)) throw new Error("scripts/zcord-host-loader.js manquant");
     cpSync(hostLoader, join(outApp, "index.js"));

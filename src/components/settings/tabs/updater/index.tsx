@@ -68,23 +68,31 @@ function UpdaterTab() {
         setDownloading(true);
         setError(null);
         try {
-            // Update & build triggers our new ASAR overwrite
             await update();
-            await rebuild();
+            const restarted = await rebuild();
+
+            if (restarted) {
+                Toasts.show({
+                    message: t("Mise a jour en cours — Zcord va se fermer..."),
+                    id: Toasts.genId(),
+                    type: Toasts.Type.MESSAGE,
+                    options: { position: Toasts.Position.BOTTOM }
+                });
+                return;
+            }
 
             Toasts.show({
-                message: "Update successful! Restarting...",
+                message: t("Mise a jour terminee — redemarrage..."),
                 id: Toasts.genId(),
                 type: Toasts.Type.SUCCESS,
                 options: { position: Toasts.Position.BOTTOM }
             });
-
-            setTimeout(() => {
-                relaunch();
-            }, 1500);
+            setTimeout(() => relaunch(), 1500);
         } catch (e: any) {
             UpdateLogger.error(e);
-            setError("Update failed: " + e.message);
+            const msg = e?.message || e?.error?.message || String(e);
+            setError("Update failed: " + msg);
+        } finally {
             setDownloading(false);
         }
     }

@@ -300,7 +300,7 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
         ?? ghRelease?.tag_name
         ?? ""
     ).trim();
-    if (!ver || !isNewerVersion(CURRENT_VERSION, ver)) return null;
+    if (!ver) return null;
 
     const tag = ver.startsWith("v") ? ver : `v${ver}`;
     const baseManifest: FilesManifest = manifest ?? { version: tag, files: {} };
@@ -314,6 +314,10 @@ export async function resolveLatestRelease(): Promise<ReleaseInfo | null> {
     const needed = Object.keys(baseManifest.files).length
         ? getNeededFiles(baseManifest)
         : [];
+
+    const versionOutdated = isNewerVersion(CURRENT_VERSION, tag);
+    // Fichiers locaux != manifest (install cassee / sync dev) → proposer MAJ meme si VERSION compilee est a jour
+    if (!versionOutdated && !needed.length) return null;
 
     const deltaNeeded = needed.filter(rel => fileMap[rel]?.sha256);
     const deltaIncomplete = needed.length > 0 && deltaNeeded.length < needed.length;
@@ -570,7 +574,8 @@ export function runSetupInstaller(setupPath: string): Promise<void> {
         });
         child.on("error", reject);
         child.unref();
-        setTimeout(resolve, 2000);
+        // Laisser Inno Setup fermer Zcord (CLOSEAPPLICATIONS) puis installer
+        setTimeout(resolve, 5000);
     });
 }
 
