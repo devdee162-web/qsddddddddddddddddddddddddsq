@@ -240,6 +240,7 @@ async function runUpdateCheck() {
     try {
         const isOutdated = await checkForUpdates();
         if (IS_DISCORD_DESKTOP) VencordNative.tray.setUpdateState(isOutdated);
+        window.dispatchEvent(new CustomEvent("zcord-update-checked"));
         if (!isOutdated) return;
 
         // Stage silently — no banner shown, update applies on next restart
