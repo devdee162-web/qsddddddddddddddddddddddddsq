@@ -1,0 +1,46 @@
+.vc-owner-crown-icon {
+    color: var(--status-warning);
+}
+
+.zc-settings-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #e85d3a !important;
+}
+
+.zc-settings-icon svg,
+.zc-settings-icon-svg {
+    color: #e85d3a !important;
+}
+
+.zc-settings-icon:not(.zc-settings-icon--logo) path {
+    fill: currentColor !important;
+}
+
+.zc-settings-icon--logo svg,
+.zc-logo-icon {
+    overflow: visible;
+}
+
+.zc-settings-icon [stroke]:not([stroke="none"]) {
+    stroke: #e85d3a !important;
+}
+
+/* Remplace l'icône Accueil Discord — styles complets dans zcordHomeIcon.css */
+
+/* Flou l'app Discord derrière la fenêtre des réglages */
+[class*="layers_"]:has([data-mana-component="layer-modal"]) [class*="baseLayer_"],
+[class*="layers_"]:has(> [class*="layer_"]:not([class*="baseLayer_"])) [class*="baseLayer_"] {
+    filter: blur(16px) brightness(0.68);
+    transform: scale(1.03);
+    transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+[class*="backdrop_"],
+[class*="backdropWithLayer_"],
+[class*="layerBackdrop_"] {
+    backdrop-filter: blur(20px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+    background-color: rgba(0, 0, 0, 0.42) !important;
+}

@@ -1,0 +1,14 @@
+#autocall-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white-500, #fff);
+    user-select: none;
+    z-index: 100;
+}
+
+.autocall-time {
+    font-family: var(--font-primary);
+}

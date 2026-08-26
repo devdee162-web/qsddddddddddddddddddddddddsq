@@ -1,0 +1,16 @@
+/* Stealth Mode - hide Zcord plugin UI (but NOT settings access) */
+
+/* Plugin buttons: header bar, channel toolbar, chat bar, user area */
+body.zcord-stealth .vc-header-bar-btns,
+body.zcord-stealth .vc-channel-toolbar-btns,
+body.zcord-stealth .vc-chat-bar-btns,
+body.zcord-stealth .vc-user-area-btns,
+
+/* Titlebar injected elements */
+body.zcord-stealth #zcord-titlebar-btn,
+body.zcord-stealth #zcord-titlebar-link-style,
+
+/* ZcordAI nav button */
+body.zcord-stealth .nai-nav-item {
+    display: none !important;
+}
