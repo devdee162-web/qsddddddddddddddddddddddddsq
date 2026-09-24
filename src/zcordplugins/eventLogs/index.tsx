@@ -10,7 +10,7 @@ import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api
 import { ModalCloseButton,ModalContent, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import { definePluginSettings } from "@api/Settings";
-import { findByProps } from "@webpack";
+import { findByProps, findByPropsLazy } from "@webpack";
 import { ChannelStore, ContextMenuApi, FluxDispatcher, Forms, GuildStore, IconUtils, Menu, MessageStore, React, Select, SelectedChannelStore, showToast, Toasts, useCallback, useEffect, useMemo, UserStore, useState } from "@webpack/common";
 
 import { t, useTranslation } from "../autoTranslateZcord";
@@ -32,8 +32,9 @@ const navigateTo = (path: string) => {
     }
 };
 
-const VoiceStateActionCreators = findByProps("selectVoiceChannel") || findByProps("connectToVoiceChannel");
-const ClipboardModule = findByProps("copy", "copyLink");
+// Lazy: findByProps au top-level casse le chargement Vencord entier
+const VoiceStateActionCreators = findByPropsLazy("selectVoiceChannel");
+const ClipboardModule = findByPropsLazy("copy", "copyLink");
 
 type LogType =
     | "message_delete" | "message_edit"

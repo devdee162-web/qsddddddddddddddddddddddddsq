@@ -21,8 +21,18 @@ export const PORTABLE =
 export const IS_DISCORD_HOST_PACKAGE =
     process.env.ZCORD_DISCORD_HOST === "1" || existsSync(join(process.resourcesPath, "_app.asar"));
 
-export const DATA_DIR =
-    process.env.Zcord_USER_DATA_DIR || (PORTABLE ? join(ZcordDir, "Data") : join(app.getPath("userData")));
+export const DATA_DIR = (() => {
+    const env = process.env.Zcord_USER_DATA_DIR || process.env.ZCORD_USER_DATA_DIR;
+    if (env) return env;
+    // Client indépendant → %AppData%\zcord (Win) / ~/.config/zcord (Linux) / Application Support (macOS)
+    if (!IS_DISCORD_HOST_PACKAGE) {
+        if (process.platform === "win32" && process.env.APPDATA) {
+            return join(process.env.APPDATA, "zcord");
+        }
+        return join(app.getPath("appData"), "zcord");
+    }
+    return PORTABLE ? join(ZcordDir, "Data") : join(app.getPath("userData"));
+})();
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -54,7 +64,7 @@ const BrowserUserAgents = {
 
 export const BrowserUserAgent =
     CommandLine.values["user-agent"] ||
-    BrowserUserAgents[CommandLine.values["user-agent-os"] || process.platform] ||
+    BrowserUserAgents[CommandLine.values["user-agent-os"] || (process.platform === "linux" ? "windows" : process.platform)] ||
     BrowserUserAgents.windows;
 
 export const enum MessageBoxChoice {

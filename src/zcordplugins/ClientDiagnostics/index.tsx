@@ -173,6 +173,12 @@ const MONITOR_GUIDE_ITEMS = [
 ] satisfies Array<{ label: string; description: string; }>;
 
 const settings = definePluginSettings({
+    enableProfiling: {
+        type: OptionType.BOOLEAN,
+        description: "Activer le profiling global (ralentit Discord / la saisie). OFF par défaut.",
+        default: false,
+        restartNeeded: true
+    },
     sortBy: {
         type: OptionType.SELECT,
         description: "Controls the default sorting in the diagnostics table.",
@@ -214,7 +220,7 @@ const settings = definePluginSettings({
     lagNotifications: {
         type: OptionType.BOOLEAN,
         description: "Send a notification when a plugin may make Discord lag.",
-        default: true
+        default: false
     }
 });
 
@@ -1710,19 +1716,30 @@ const DiagnosticsPageWrapped = ErrorBoundary.wrap(ClientDiagnosticsPage, { noop:
 
 export default definePlugin({
     name: "ClientDiagnostics",
-    enabledByDefault: true,
-    description: "Profiles plugin callback time, heap deltas, and active resources to find laggy plugins.",
+    enabledByDefault: false,
+    description: "Profiles plugin callback time, heap deltas, and active resources to find laggy plugins. Disable when chatting — it slows typing.",
     authors: [{ name: "irritably",
      id: 928787166916640838n }],
     tags: ["Developers", "Utility"],
     searchTerms: ["lag", "cpu", "ram", "memory", "performance", "profiler"],
-    required: true,
+    required: false,
     startAt: StartAt.Init,
     requiresRestart: true,
     settings,
 
     start() {
         try {
+            // Opt-in only — global probes lag chat input / Discord UI
+            if (!settings.store.enableProfiling) {
+                logger.info("Profiling off (enable in settings to diagnose lag).");
+                SettingsPlugin.customEntries.push({
+                    key: ENTRY_KEY,
+                    title: "Client diagnostics",
+                    Component: DiagnosticsPageWrapped,
+                    Icon: ClockIcon
+                });
+                return;
+            }
             startedAt = Date.now();
             installGlobalProbes();
             for (const plugin of Object.values(plugins)) instrumentPlugin(plugin);

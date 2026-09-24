@@ -341,6 +341,7 @@ export default definePlugin({
     authors: [{ name: ">Snayz", id: 1361345963175968779n }],
     tags: ["Utility", "Appearance", "Performance"],
     searchTerms: ["performance", "optimization", "lag", "animation", "fps", "ram", "memory", "gif", "low-end"],
+    enabledByDefault: true,
     settings,
 
     patches: [

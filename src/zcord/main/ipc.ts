@@ -42,6 +42,7 @@ import { isDeckGameMode, showGamePage } from "./utils/steamOS";
 import { isValidVencordInstall } from "./utils/vencordLoader";
 import { VENCORD_DIR } from "./vencordDir";
 
+console.log(`[Zcord] VENCORD_DIR = ${VENCORD_DIR}`);
 handleSync(IpcEvents.DEPRECATED_GET_VENCORD_PRELOAD_SCRIPT_PATH, () => join(VENCORD_DIR, "preload.js"));
 handleSync(IpcEvents.GET_VENCORD_PRELOAD_SCRIPT, () => {
     try {
@@ -53,7 +54,10 @@ handleSync(IpcEvents.GET_VENCORD_PRELOAD_SCRIPT, () => {
 });
 handleSync(IpcEvents.GET_VENCORD_RENDERER_SCRIPT, () => {
     try {
-        return readFileSync(join(VENCORD_DIR, "renderer.js"), "utf-8");
+        const p = join(VENCORD_DIR, "renderer.js");
+        const js = readFileSync(p, "utf-8");
+        console.log(`[Zcord] renderer.js OK (${(js.length / 1024 / 1024).toFixed(1)} Mo) depuis ${p}`);
+        return js;
     } catch (err) {
         console.error("Failed to read Zcord renderer", err);
         return "";

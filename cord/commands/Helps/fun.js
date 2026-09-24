@@ -23,7 +23,6 @@ ${prefix}love <@user> ➜ Message animé
 ${prefix}thot <@user> ➜ Score aléatoire
 ${prefix}coinflip ➜ Pile ou face
 ${prefix}bonjour ➜ Message bonjour animé
-${prefix}broadcast <message> ➜ Message broadcast
 ${prefix}paypal ➜ Commande PayPal
 ${prefix}pignouf ➜ Pignouf
 ${prefix}antigroup <on/off> ➜ Anti-groupe
@@ -40,7 +39,6 @@ ${prefix}love <@user> ➜ Animated message
 ${prefix}thot <@user> ➜ Random score
 ${prefix}coinflip ➜ Heads or tails
 ${prefix}bonjour ➜ Animated hello
-${prefix}broadcast <message> ➜ Broadcast message
 ${prefix}paypal ➜ PayPal command
 ${prefix}pignouf ➜ Pignouf
 ${prefix}antigroup <on/off> ➜ Anti-group

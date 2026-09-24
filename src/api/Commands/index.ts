@@ -50,12 +50,20 @@ export let RequiredMessageOption: CommandOption = ReqPlaceholder;
 // Add this offset to every added command to keep them unique
 let commandIdOffset: number;
 
+/** File d'attente si les plugins démarrent avant le module Discord built-in */
+const pendingCommands: Array<{ command: VencordCommand; plugin: string; }> = [];
+
 export const _init = function (cmds: VencordCommand[]) {
     try {
         BUILT_IN = cmds;
         OptionalMessageOption = cmds.find(c => (c.untranslatedName || c.displayName) === "shrug")!.options![0];
         RequiredMessageOption = cmds.find(c => (c.untranslatedName || c.displayName) === "me")!.options![0];
         commandIdOffset = Math.abs(BUILT_IN.map(x => Number(x.id)).sort((x, y) => x - y)[0]) - BUILT_IN.length;
+
+        const queued = pendingCommands.splice(0);
+        for (const { command, plugin } of queued) {
+            registerCommand(command, plugin);
+        }
     } catch (e) {
         new Logger("CommandsAPI").error("Failed to load CommandsApi", e, " - cmds is", cmds);
     }
@@ -134,11 +142,7 @@ function registerSubCommands(cmd: VencordCommand, plugin: string) {
 
 export function registerCommand<C extends VencordCommand>(command: C, plugin: string) {
     if (!BUILT_IN) {
-        console.warn(
-            "[CommandsAPI]",
-            `Not registering ${command.name} as the CommandsAPI hasn't been initialised.`,
-            "Please restart to use commands"
-        );
+        pendingCommands.push({ command, plugin });
         return;
     }
 

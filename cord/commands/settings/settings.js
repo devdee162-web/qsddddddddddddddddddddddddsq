@@ -48,12 +48,6 @@ Webcam: ${getStatusText(db.voicewebcam)}
 Stream: ${getStatusText(db.voicestream)}
 \`\`\`
 
-╭ **🎁 Nitro Sniper**
-\`\`\`yaml
-Nitro Sniper: ${getStatusText(db.nitrosniper)}
-URL Webhook: ${db.nitrourl || "Aucun"}
-\`\`\`
-
 ╭ **💤 AFK**
 \`\`\`yaml
 Mode AFK: ${getStatusText(db.afk)}
@@ -89,12 +83,6 @@ Muted: ${getStatusText(db.voicemute)}
 Deafened: ${getStatusText(db.voicedeaf)}
 Webcam: ${getStatusText(db.voicewebcam)}
 Stream: ${getStatusText(db.voicestream)}
-\`\`\`
-
-╭ **🎁 Nitro Sniper**
-\`\`\`yaml
-Nitro Sniper: ${getStatusText(db.nitrosniper)}
-Webhook URL: ${db.nitrourl || "None"}
 \`\`\`
 
 ╭ **💤 AFK**

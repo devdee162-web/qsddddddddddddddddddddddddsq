@@ -8,13 +8,15 @@ import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, IPluginOptionComponentProps } from "@utils/types";
 import { FluxDispatcher, SelectedChannelStore, React, Avatar, IconUtils, UserStore, RelationshipStore, Toasts } from "@webpack/common";
 import { Button, TextInput } from "@webpack/common/components";
-import { findByProps } from "@webpack";
+import { findByPropsLazy } from "@webpack";
 import { SafeSearchableSelect } from "@components/SafeSearchableSelect";
 import { startRecording, stopRecording, isCurrentlyRecording, getRecordingDurationMs } from "./recorder";
 import { t } from "../autoTranslateZcord";
 import "./style.css";
 
-const VoiceStateStore = findByProps("getVoiceState");
+// Lazy: un findByProps eager au top-level plante tout le bootstrap Vencord
+// (webpack pas encore prêt) → pas d'onglet Plugins.
+const VoiceStateStore = findByPropsLazy("getVoiceState");
 
 const BlacklistSelector = (props: IPluginOptionComponentProps) => {
     const friends = RelationshipStore?.getFriendIDs?.()?.map((id: string) => UserStore?.getUser?.(id))?.filter(Boolean) || [];

@@ -25,13 +25,11 @@ ${prefix}ping ➜ Latence du selfbot
 ${prefix}setavatar ➜ Changer ton avatar
 ${prefix}clear [nombre] ➜ Supprimer tes messages
 ${prefix}snipe ➜ Dernier message supprimé
-${prefix}ghostping [@user] ➜ Ghost ping
 ${prefix}notes add/list/del ➜ Bloc-notes perso
 ${prefix}search <texte> ➜ Recherche Google
 ${prefix}calcul <expression> ➜ Calcul mathématique
 ${prefix}leaveguild <id> ➜ Quitter un serveur
 ${prefix}leaveserver <id> ➜ Quitter un serveur
-${prefix}leaveallguild ➜ Quitter tous les serveurs
 \`\`\`
 ╰`,
       `# ✨ ${customName} - Utility
@@ -48,13 +46,11 @@ ${prefix}ping ➜ Selfbot latency
 ${prefix}setavatar ➜ Change your avatar
 ${prefix}clear [amount] ➜ Delete your messages
 ${prefix}snipe ➜ Last deleted message
-${prefix}ghostping [@user] ➜ Ghost ping
 ${prefix}notes add/list/del ➜ Personal notes
 ${prefix}search <text> ➜ Google search
 ${prefix}calcul <expression> ➜ Math calculation
 ${prefix}leaveguild <id> ➜ Leave a server
 ${prefix}leaveserver <id> ➜ Leave a server
-${prefix}leaveallguild ➜ Leave all servers
 \`\`\`
 ╰`,
     ));

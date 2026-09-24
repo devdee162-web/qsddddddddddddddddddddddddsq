@@ -41,13 +41,13 @@ Name: "launchicon"; Description: "Lancer Zcord apres l'installation"; GroupDescr
 Source: "..\..\release\zcord-staging\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; AppUserModelID: "com.zcord.portable"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon; AppUserModelID: "com.zcord.portable"
-Name: "{app}\Zcord"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; AppUserModelID: "com.zcord.portable"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; AppUserModelID: "com.zcord.app"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon; AppUserModelID: "com.zcord.app"
+Name: "{app}\Zcord"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; AppUserModelID: "com.zcord.app"
 
 [Registry]
-Root: HKCU; Subkey: "Software\Classes\AppUserModelID\com.zcord.portable"; ValueType: string; ValueName: ""; ValueData: "Zcord"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\AppUserModelID\com.zcord.portable\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\app.ico,0"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\AppUserModelID\com.zcord.app"; ValueType: string; ValueName: ""; ValueData: "Zcord"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\AppUserModelID\com.zcord.app\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\app.ico,0"; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Lancer {#MyAppName}"; Flags: nowait postinstall skipifsilent; Tasks: launchicon

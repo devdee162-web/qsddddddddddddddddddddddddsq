@@ -280,7 +280,7 @@
         <div class="setting">
             <div class="setting-info">
                 <div class="setting-title">Enable Rich Presence</div>
-                <div class="setting-description">Display your current activity on Discord</div>
+                <div class="setting-description">Display your current activity on Discord (starts arRPC)</div>
             </div>
             <div class="toggle" id="toggle-enabled"></div>
         </div>
@@ -288,8 +288,8 @@
         <div id="enabled-settings">
             <div class="setting">
                 <div class="setting-info">
-                    <div class="setting-title">Use Built-in Server</div>
-                    <div class="setting-description">Use Zcord's integrated arRPC server</div>
+                    <div class="setting-title">Use Built-in Server (arRPC)</div>
+                    <div class="setting-description">Required for YTMDesktop / games — spawn Zcord's local Discord RPC bridge</div>
                 </div>
                 <div class="toggle" id="toggle-builtin"></div>
             </div>
@@ -378,6 +378,13 @@
     customHost.value = settings.arRPCWebSocketCustomHost;
     customPort.value = settings.arRPCWebSocketCustomPort;
 
+    // One-shot: RP enabled but built-in off and no external host → enable arRPC now
+    if (!settings.arRPCDisabled && !settings.arRPC && !settings.arRPCWebSocketCustomHost) {
+        settings.arRPC = true;
+        updateToggle(toggleBuiltin, true);
+        console.info("set:arRPC=true");
+    }
+
     function updateVisibility() {
         enabledSettings.classList.toggle("hidden", settings.arRPCDisabled);
         advancedSettings.classList.toggle("hidden", settings.arRPCDisabled);
@@ -388,6 +395,13 @@
     toggleEnabled.onclick = () => {
         settings.arRPCDisabled = !settings.arRPCDisabled;
         updateToggle(toggleEnabled, !settings.arRPCDisabled);
+        // Turning RP on without built-in (and without external host) = Stopped forever.
+        // Auto-enable arRPC so YTMDesktop / games work in one click.
+        if (!settings.arRPCDisabled && !settings.arRPC && !settings.arRPCWebSocketCustomHost) {
+            settings.arRPC = true;
+            updateToggle(toggleBuiltin, true);
+            console.info("set:arRPC=true");
+        }
         updateVisibility();
         console.info("set:arRPCDisabled=" + settings.arRPCDisabled);
     };
@@ -446,6 +460,12 @@
         } else if (status.running) {
             color = "#faa81a";
             statusText = "Starting...";
+        } else if (status.lastError) {
+            color = "#ed4245";
+            statusText = "Error: " + status.lastError;
+        } else if (!settings.arRPCDisabled && !settings.arRPC && !settings.arRPCWebSocketCustomHost) {
+            color = "#faa81a";
+            statusText = "Stopped — turn on Use Built-in Server";
         } else {
             color = "#ed4245";
             statusText = "Stopped";

@@ -65,3 +65,10 @@ cord/commands/Utiles/notes.json
 # System files
 Thumbs.db
 Desktop.ini
+
+# Local shortcuts / nuget / backups
+Zcord.lnk
+*.bak
+update-server/**/obj/
+update-server/**/bin/
+

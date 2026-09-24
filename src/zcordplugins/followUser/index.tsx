@@ -183,7 +183,8 @@ function startFlux() {
     try { VoiceStateStore?.addChangeListener?.(checkFollowedUser); } catch { }
 
     if (fastCheckInterval) clearInterval(fastCheckInterval);
-    fastCheckInterval = setInterval(checkFollowedUser, 50);
+    // Events Flux + VoiceStateStore suffisent — plus de poll 50ms (lag chat / CPU)
+    fastCheckInterval = null;
 
     fluxUnsub = () => {
         FluxDispatcher?.unsubscribe?.("VOICE_STATE_UPDATES", handler);

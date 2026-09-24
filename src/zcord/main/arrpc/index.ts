@@ -568,6 +568,12 @@ export async function initArRPC() {
         return;
     }
 
+    // Default: built-in arRPC ON when unset (otherwise UI shows Enable ON + Stopped forever)
+    if (Settings.store.arRPC === undefined) {
+        Settings.store.arRPC = true;
+        debugLog("arRPC defaulted to true (unset)");
+    }
+
     if (!Settings.store.arRPC) {
         debugLog("Built-in server is disabled, using external only");
         await destroyArRPC();

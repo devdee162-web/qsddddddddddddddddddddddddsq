@@ -1,0 +1,212 @@
+{
+  "settings": {
+    "autoCheck": true,
+    "checkIntervalHours": 6,
+    "maintenanceStart": "02:00",
+    "maintenanceEnd": "05:00",
+    "githubOwner": "devdee162-web",
+    "githubRepo": "qsddddddddddddddddddddddddsq"
+  },
+  "releases": [
+    {
+      "id": "3f655ded-d7a1-474b-a1de-f69a40d66fd2",
+      "name": "v1.26.9",
+      "version": "v1.26.9",
+      "type": "patch",
+      "status": "published",
+      "notes": "Zcord v1.26.9 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.9/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.9/files-manifest.json",
+      "fileSize": 208874816,
+      "sha256": "",
+      "createdAt": "2026-08-26T23:29:29Z",
+      "publishedAt": "2026-08-26T23:29:29Z",
+      "force": false
+    },
+    {
+      "id": "3483019e-eb41-4eb2-8560-c1da5a4cbb85",
+      "name": "v1.26.8",
+      "version": "v1.26.8",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.8 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.8/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.8/files-manifest.json",
+      "fileSize": 208871154,
+      "sha256": "",
+      "createdAt": "2026-08-26T23:19:08Z",
+      "publishedAt": "2026-08-26T23:19:08Z",
+      "force": false
+    },
+    {
+      "id": "7cbaec3f-6913-426a-92ea-7634ae0ab518",
+      "name": "v1.26.7",
+      "version": "v1.26.7",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.7 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.7/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.7/files-manifest.json",
+      "fileSize": 208870538,
+      "sha256": "",
+      "createdAt": "2026-08-26T23:08:28Z",
+      "publishedAt": "2026-08-26T23:08:28Z",
+      "force": false
+    },
+    {
+      "id": "fcbf1a99-cf94-4a45-8425-827a6557e1b3",
+      "name": "v1.26.6",
+      "version": "v1.26.6",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.6 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.6/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.6/files-manifest.json",
+      "fileSize": 208871317,
+      "sha256": "",
+      "createdAt": "2026-08-26T22:55:30Z",
+      "publishedAt": "2026-08-26T22:55:30Z",
+      "force": false
+    },
+    {
+      "id": "802ee80b-70d4-4eea-b699-bfbba4ac8562",
+      "name": "v1.26.5",
+      "version": "v1.26.5",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.5 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.5/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.5/files-manifest.json",
+      "fileSize": 208869888,
+      "sha256": "",
+      "createdAt": "2026-08-26T22:37:04Z",
+      "publishedAt": "2026-08-26T22:37:04Z",
+      "force": false
+    },
+    {
+      "id": "4ddec278-36fc-42fe-bcaf-e00b850679dd",
+      "name": "v1.26.4",
+      "version": "v1.26.4",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.4 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.4/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.4/files-manifest.json",
+      "fileSize": 208869399,
+      "sha256": "",
+      "createdAt": "2026-08-26T20:23:01Z",
+      "publishedAt": "2026-08-26T20:23:01Z",
+      "force": false
+    },
+    {
+      "id": "e69677a1-c56f-46cb-b962-b7ec5759a80e",
+      "name": "v1.26.3",
+      "version": "v1.26.3",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.3 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.3/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.3/files-manifest.json",
+      "fileSize": 208869280,
+      "sha256": "",
+      "createdAt": "2026-08-26T20:09:18Z",
+      "publishedAt": "2026-08-26T20:09:18Z",
+      "force": false
+    },
+    {
+      "id": "7c853b22-7d38-4bad-bcf1-416c33a49134",
+      "name": "v1.26.2",
+      "version": "v1.26.2",
+      "type": "patch",
+      "status": "draft",
+      "notes": "Zcord v1.26.2 \u2014 Install: Zcord-Setup.exe | MAJ auto via GitHub Releases",
+      "autoCheck": false,
+      "autoBackup": true,
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.2/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/download/v1.26.2/files-manifest.json",
+      "fileSize": 208868115,
+      "sha256": "",
+      "createdAt": "2026-08-26T19:55:24Z",
+      "publishedAt": "2026-08-26T19:55:24Z",
+      "force": false
+    }
+  ],
+  "history": [],
+  "logs": [
+    {
+      "id": "1172cd20-c1f6-4317-b323-a5f4ee7c9b94",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:56:10.4299194Z"
+    },
+    {
+      "id": "2ab429be-8199-4a6c-94ef-cca54c3032d9",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:56:10.1675248Z"
+    },
+    {
+      "id": "24efd4d1-eb15-456c-801f-cc2a8ac9b8dc",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:54.5254837Z"
+    },
+    {
+      "id": "8ed5d56b-df47-47bf-8ab2-ba59a0d1294a",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:54.2312564Z"
+    },
+    {
+      "id": "25ec4830-5dc1-48f2-950d-95a7c6194352",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:40.9623114Z"
+    },
+    {
+      "id": "39cb2e62-9eb4-46c1-9278-64dabdb5df01",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:38.2801678Z"
+    },
+    {
+      "id": "8f45019c-2006-4f5c-b8b4-08e3463be033",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:37.5332069Z"
+    },
+    {
+      "id": "ebd64f91-f127-4f30-a41f-7e81d110640c",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:37.1521944Z"
+    },
+    {
+      "id": "0e3540d8-ed13-4be8-8e37-a9e3e1b2a05d",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:12.2436485Z"
+    },
+    {
+      "id": "0f15c3ae-9d40-48d7-ae44-8d1bc3e297c8",
+      "level": "info",
+      "message": "Sync GitHub OK \u2014 8 release(s), latest v1.26.9",
+      "at": "2026-08-26T23:54:11.8784844Z"
+    }
+  ],
+  "reports": []
+}

@@ -14,3 +14,9 @@ body.zcord-stealth #zcord-titlebar-link-style,
 body.zcord-stealth .nai-nav-item {
     display: none !important;
 }
+
+/* Toujours garder le bouton Plugins */
+body.zcord-stealth #zcord-plugins-fab,
+body.zcord-compact #zcord-plugins-fab {
+    display: flex !important;
+}

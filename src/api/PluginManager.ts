@@ -28,6 +28,7 @@ import { addMessagePopoverButton, removeMessagePopoverButton } from "@api/Messag
 import { addNicknameIcon, removeNicknameIcon } from "@api/NicknameIcons";
 import { Settings, SettingsStore } from "@api/Settings";
 import { disableStyle, enableStyle } from "@api/Styles";
+import { isZcordPerfForcedOff } from "@utils/zcordPerfPlugins";
 import { Logger } from "@utils/Logger";
 import { onlyOnce } from "@utils/onlyOnce";
 import { canonicalizeFind, canonicalizeReplacement } from "@utils/patches";
@@ -398,7 +399,7 @@ export const initPluginManager = onlyOnce(function init() {
         SettingsStore.markAsChanged();
     }
 
-    // Restaure les plugins enabledByDefault/required (annule migration perf)
+    // Restaure required/enabledByDefault
     const RESTORE_PLUGINS_FLAG = "__zcord_restore_plugins_v1__";
     if (!(SettingsStore.plain as any)[RESTORE_PLUGINS_FLAG]) {
         for (const p of pluginsValues) {
@@ -411,6 +412,35 @@ export const initPluginManager = onlyOnce(function init() {
         }
         (SettingsStore.plain as any)[RESTORE_PLUGINS_FLAG] = true;
         SettingsStore.markAsChanged();
+    }
+
+    // Après lock perf v3 : redonne les plugins enabledByDefault à l’utilisateur
+    const UNLOCK_FLAG = "__zcord_unlock_plugins_v4__";
+    if (!(SettingsStore.plain as any)[UNLOCK_FLAG]) {
+        for (const p of pluginsValues) {
+            if (isZcordPerfForcedOff(p.name)) {
+                const s = SettingsStore.plain.plugins[p.name] ??= { enabled: false };
+                s.enabled = false;
+                continue;
+            }
+            if (p.required || p.enabledByDefault) {
+                if (!SettingsStore.plain.plugins[p.name]) {
+                    SettingsStore.plain.plugins[p.name] = { enabled: true };
+                } else {
+                    SettingsStore.plain.plugins[p.name].enabled = true;
+                }
+            }
+        }
+        (SettingsStore.plain as any)[UNLOCK_FLAG] = true;
+        delete (SettingsStore.plain as any).__zcord_perf_v3__;
+        SettingsStore.markAsChanged();
+    } else {
+        // ClientDiagnostics only
+        for (const p of pluginsValues) {
+            if (!isZcordPerfForcedOff(p.name)) continue;
+            const s = SettingsStore.plain.plugins[p.name] ??= { enabled: false };
+            s.enabled = false;
+        }
     }
 
     // First round-trip to mark and force enable dependencies

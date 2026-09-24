@@ -10,7 +10,6 @@ function buildMenu(prefix, premium) {
     `${prefix}mod ➜ Modération`,
     `${prefix}fun ➜ Fun`,
     `${prefix}nsfw ➜ NSFW`,
-    `${prefix}nitro ➜ Nitro`,
     `${prefix}rpc ➜ RPC / Activité`,
   ];
 
@@ -41,7 +40,6 @@ function buildMenuEn(prefix, premium) {
     `${prefix}mod ➜ Moderation`,
     `${prefix}fun ➜ Fun`,
     `${prefix}nsfw ➜ NSFW`,
-    `${prefix}nitro ➜ Nitro`,
     `${prefix}rpc ➜ RPC / Activity`,
   ];
 

@@ -20,22 +20,14 @@ import { SettingsStore as SettingsStoreClass } from "@shared/SettingsStore";
 import { Logger } from "@utils/Logger";
 import { mergeDefaults } from "@utils/mergeDefaults";
 import { DefinedSettings, OptionType, SettingsChecks, SettingsDefinition } from "@utils/types";
+import { isZcordPerfForcedOff, ZCORD_PERF_DISABLED_PLUGINS } from "@utils/zcordPerfPlugins";
 import { React, useEffect } from "@webpack/common";
 
 import plugins from "~plugins";
 
 const logger = new Logger("Settings");
 
-const FORCE_DISABLED_DEFAULT_PLUGIN_KEYS = new Set([
-    "activityspoofer",
-    "audiolimiter",
-    "antigroup",
-    "cursormacos",
-    "fakeperm",
-    "translucence",
-    "rolecoloreverywhere",
-    "voicechatutilities"
-]);
+export { ZCORD_PERF_DISABLED_PLUGINS };
 
 export interface SettingsPluginUiElement {
     enabled: boolean;
@@ -184,15 +176,18 @@ if (settings.cloud && settings.cloud.url && settings.cloud.url.includes("equicor
 // Zcord native defaults — defaultPlugins is always enabled, no external prefs file
 const ZCORD_PREFS = { defaultPlugins: true, autoUpdate: true } as const;
 
+function isPerfForcedOff(pluginKey: string, pluginDef?: { name?: string; }) {
+    return isZcordPerfForcedOff(pluginKey, pluginDef?.name);
+}
+
 // Ensure plugins have defaults set if missing, while preserving explicit user choices.
 if (!IS_REPORTER && settings.plugins && plugins) {
     for (const [pluginKey, pluginDef] of Object.entries(plugins as Record<string, any>)) {
-        const forceOff =
-            FORCE_DISABLED_DEFAULT_PLUGIN_KEYS.has(pluginKey.toLowerCase())
-            || FORCE_DISABLED_DEFAULT_PLUGIN_KEYS.has(String(pluginDef?.name ?? "").toLowerCase());
+        const forceOff = isPerfForcedOff(pluginKey, pluginDef);
 
         if (forceOff) {
-            if (settings.plugins[pluginKey]) settings.plugins[pluginKey].enabled = false;
+            if (!settings.plugins[pluginKey]) settings.plugins[pluginKey] = { enabled: false };
+            else settings.plugins[pluginKey].enabled = false;
             continue;
         }
 
@@ -224,9 +219,7 @@ export const SettingsStore = new SettingsStoreClass(settings, {
         if (path === "plugins" && key in plugins) {
             const pluginKey = String(key);
             const pluginDef = (plugins as Record<string, any>)[pluginKey];
-            const forceOff =
-                FORCE_DISABLED_DEFAULT_PLUGIN_KEYS.has(pluginKey.toLowerCase())
-                || FORCE_DISABLED_DEFAULT_PLUGIN_KEYS.has(String(pluginDef?.name ?? "").toLowerCase());
+            const forceOff = isPerfForcedOff(pluginKey, pluginDef);
 
             const isRequired = !forceOff && (IS_REPORTER || Boolean(pluginDef?.required));
             const isDefault = !forceOff && (isRequired || Boolean(pluginDef?.enabledByDefault));

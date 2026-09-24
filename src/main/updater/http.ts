@@ -102,7 +102,7 @@ async function applyUpdate(): Promise<boolean> {
                         await downloadUpdate();
                         notifyRenderer("installing", pending.version);
                         await runSetupInstaller(pendingLocalPath!);
-                        try { if (pendingLocalPath) rmSync(pendingLocalPath, { force: true }); } catch {}
+                        scheduleSetupCleanup(pendingLocalPath!);
                         pending = null;
                         pendingLocalPath = null;
                         setImmediate(() => app.quit());
@@ -128,7 +128,7 @@ async function applyUpdate(): Promise<boolean> {
             throw new Error("Setup introuvable — reessaie");
         }
         await runSetupInstaller(localPath);
-        try { rmSync(localPath, { force: true }); } catch {}
+        scheduleSetupCleanup(localPath);
         pending = null;
         pendingLocalPath = null;
         setImmediate(() => app.quit());
@@ -206,5 +206,6 @@ export {
     downloadReleaseFile,
     isAllowedUpdateUrl,
     resolveLatestRelease,
-    runSetupInstaller
+    runSetupInstaller,
+    scheduleSetupCleanup
 } from "./zcordRelease";

@@ -3,8 +3,9 @@ param(
     [Parameter(Mandatory = $true)][string]$ExePath,
     [Parameter(Mandatory = $true)][string]$IconPath,
     [Parameter(Mandatory = $true)][string]$ShortcutPath,
-    [string]$AppUserModelId = "com.zcord.portable",
-    [string]$WorkingDirectory = ""
+    [string]$AppUserModelId = "com.zcord.app",
+    [string]$WorkingDirectory = "",
+    [string]$Arguments = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,10 +71,11 @@ public static class ZcordShortcut2 {
         uint Commit();
     }
 
-    public static void Create(string lnkPath, string exePath, string workDir, string iconPath, string aumid, string desc) {
+    public static void Create(string lnkPath, string exePath, string workDir, string iconPath, string aumid, string desc, string args) {
         var link = (IShellLinkW)new ShellLinkCom();
         link.SetPath(exePath);
         link.SetWorkingDirectory(workDir);
+        if (!string.IsNullOrEmpty(args)) link.SetArguments(args);
         link.SetIconLocation(iconPath, 0);
         link.SetDescription(desc);
 
@@ -81,7 +83,8 @@ public static class ZcordShortcut2 {
         var fmt = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3");
 
         SetProp(store, new PropertyKey(fmt, 5), aumid);
-        SetProp(store, new PropertyKey(fmt, 2), "\"" + exePath + "\"");
+        var relaunch = string.IsNullOrEmpty(args) ? ("\"" + exePath + "\"") : ("\"" + exePath + "\" " + args);
+        SetProp(store, new PropertyKey(fmt, 2), relaunch);
         SetProp(store, new PropertyKey(fmt, 3), iconPath + ",0");
         SetProp(store, new PropertyKey(fmt, 4), desc);
 
@@ -122,7 +125,7 @@ public static class ZcordShortcut2 {
 "@
 
 Add-Type -TypeDefinition $cs -ErrorAction Stop
-[ZcordShortcut2]::Create($ShortcutPath, $ExePath, $WorkingDirectory, $IconPath, $AppUserModelId, "Zcord")
+[ZcordShortcut2]::Create($ShortcutPath, $ExePath, $WorkingDirectory, $IconPath, $AppUserModelId, "Zcord", $Arguments)
 $read = [ZcordShortcut2]::ReadAumid($ShortcutPath)
 if ($read -ne $AppUserModelId) {
     throw "AUMID not persisted. Got: $read"

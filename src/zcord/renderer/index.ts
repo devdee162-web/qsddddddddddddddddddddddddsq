@@ -31,30 +31,45 @@ import { VesktopSettingsIcon } from "shared/icons";
 VesktopLogger.log("read if cute :3");
 VesktopLogger.log(`Zcord v${VesktopNative.app.getVersion()}`);
 
-const { customEntries, customSections } = Vencord.Plugins.plugins.Settings as any as typeof SettingsPlugin;
+function patchZcordSettings() {
+    const settingsPlugin = Vencord?.Plugins?.plugins?.Settings as any as typeof SettingsPlugin | undefined;
+    if (!settingsPlugin?.customEntries || !settingsPlugin?.customSections) {
+        VesktopLogger.error("Settings plugin introuvable — réessaie dans 1s");
+        setTimeout(patchZcordSettings, 1000);
+        return;
+    }
 
-customEntries.push({
-    key: "Zcord_Zcord_settings",
-    title: "Zcord Settings",
-    Component: SettingsUi,
-    Icon: VesktopSettingsIcon
-});
+    const { customEntries, customSections } = settingsPlugin;
 
-customSections.push(() => ({
-    section: "ZcordSettings",
-    label: "Zcord Settings",
-    element: SettingsUi,
-    className: "vc-Zcord-settings"
-}));
+    if (!customEntries.some(e => e.key === "Zcord_Zcord_settings")) {
+        customEntries.push({
+            key: "Zcord_Zcord_settings",
+            title: "Zcord Settings",
+            Component: SettingsUi,
+            Icon: VesktopSettingsIcon
+        });
+    }
 
-VesktopNative.voice.onToggleSelfMute(() => VoiceActions.toggleSelfMute());
-VesktopNative.voice.onToggleSelfDeaf(() => VoiceActions.toggleSelfDeaf());
+    customSections.push(() => ({
+        section: "ZcordSettings",
+        label: "Zcord Settings",
+        element: SettingsUi,
+        className: "vc-Zcord-settings"
+    }));
+}
 
+if (typeof Vencord === "undefined") {
+    VesktopLogger.error("Vencord global manquant — injection trop tôt");
+} else {
+    patchZcordSettings();
+    VesktopNative.voice.onToggleSelfMute(() => VoiceActions.toggleSelfMute());
+    VesktopNative.voice.onToggleSelfDeaf(() => VoiceActions.toggleSelfDeaf());
 
-// TODO: remove this legacy workaround once some time has passed
-if (!Vencord.Api.Styles.vencordRootNode) {
-    const style = document.createElement("style");
-    style.id = "vesktop-css-core";
-    VesktopNative.app.getRendererCss().then(css => (style.textContent = css));
-    document.addEventListener("DOMContentLoaded", () => document.documentElement.append(style), { once: true });
+    // TODO: remove this legacy workaround once some time has passed
+    if (!Vencord.Api.Styles.vencordRootNode) {
+        const style = document.createElement("style");
+        style.id = "vesktop-css-core";
+        VesktopNative.app.getRendererCss().then(css => (style.textContent = css));
+        document.addEventListener("DOMContentLoaded", () => document.documentElement.append(style), { once: true });
+    }
 }

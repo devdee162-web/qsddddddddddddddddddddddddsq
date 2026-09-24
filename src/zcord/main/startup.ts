@@ -121,7 +121,25 @@ function init() {
 
     app.whenReady().then(async () => {
         if (process.platform === "win32") {
-            app.setAppUserModelId("com.zcord.portable");
+            app.setAppUserModelId("com.zcord.app");
+
+            // Dev: electron.exe → enregistrer icon.ico (évite l'atome Electron en taskbar)
+            if (process.execPath.toLowerCase().endsWith("electron.exe")) {
+                try {
+                    const { join } = require("path");
+                    const { registerZcordTaskbar } = require(join(app.getAppPath(), "scripts", "register-zcord-taskbar.cjs"));
+                    registerZcordTaskbar({
+                        appRoot: app.getAppPath(),
+                        exePath: process.execPath,
+                        iconPath: join(app.getAppPath(), "static", "icon.ico"),
+                        arguments: ".",
+                        workDir: app.getAppPath(),
+                        aumid: "com.zcord.app",
+                    });
+                } catch (e) {
+                    console.warn("[Zcord] taskbar icon:", (e as Error)?.message || e);
+                }
+            }
         }
 
         registerScreenShareHandler();
@@ -147,7 +165,16 @@ async function bootstrap() {
         return;
     }
 
+    const isDevElectron = process.execPath.toLowerCase().endsWith("electron.exe");
+
+    // Dev / package indépendant : ouvrir Discord directement (pas l'écran Installer).
     if (!Object.hasOwn(State.store, "firstLaunch")) {
+        if (isDevElectron || app.isPackaged) {
+            State.store.firstLaunch = false;
+            if (!Settings.store.discordBranch) Settings.store.discordBranch = "stable";
+            createWindows();
+            return;
+        }
         createFirstLaunchTour();
         return;
     }

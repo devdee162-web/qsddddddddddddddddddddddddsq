@@ -1,0 +1,44 @@
+{
+  "settings": {
+    "autoCheck": true,
+    "checkIntervalHours": 6,
+    "maintenanceStart": "02:00",
+    "maintenanceEnd": "05:00",
+    "githubOwner": "devdee162-web",
+    "githubRepo": "qsddddddddddddddddddddddddsq"
+  },
+  "releases": [
+    {
+      "id": "823a443e-b679-478e-ad7b-b7e9514bb2c1",
+      "name": "Zcord v1.26.9",
+      "version": "v1.26.9",
+      "type": "minor",
+      "status": "published",
+      "notes": "",
+      "setupUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/latest/download/Zcord-Setup.exe",
+      "manifestUrl": "https://github.com/devdee162-web/qsddddddddddddddddddddddddsq/releases/latest/download/files-manifest.json",
+      "fileSize": 208874816,
+      "sha256": "874ab9744770a82de1ab15e681b57db2369abe91dd038435aa2b1a77866d5277",
+      "createdAt": "2026-08-26T23:32:17.403Z",
+      "publishedAt": "2026-08-26T23:44:57.610Z"
+    }
+  ],
+  "history": [],
+  "logs": [
+    {
+      "id": "4ff2e805-a29e-41e8-a4da-f4918be797ac",
+      "level": "warn",
+      "message": "Depublie: v1.26.9",
+      "meta": {},
+      "at": "2026-08-26T23:32:52.896Z"
+    },
+    {
+      "id": "481ccb11-96d0-47f0-baea-0dc106416225",
+      "level": "info",
+      "message": "Sync release v1.26.9 depuis release/",
+      "meta": {},
+      "at": "2026-08-26T23:32:17.404Z"
+    }
+  ],
+  "reports": []
+}

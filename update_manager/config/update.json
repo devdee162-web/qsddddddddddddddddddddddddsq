@@ -1,0 +1,8 @@
+{
+  "serverUrl": "http://127.0.0.1:8743",
+  "installDir": "",
+  "currentVersion": "1.26.9",
+  "backupDir": "backups",
+  "logFile": "logs/updater.log",
+  "autoBackup": true
+}

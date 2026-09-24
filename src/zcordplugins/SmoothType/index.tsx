@@ -5,7 +5,6 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import { Forms } from "@webpack/common";
 
@@ -221,7 +220,7 @@ export default definePlugin({
     name: "SmoothType",
     enabledByDefault: false,
     description: "The plugin allows you to fully customize the cursor caret's visual settings, including adjustable transition delays and custom CSS animation effects.",
-    authors: [Devs.coll,Devs.viciouscal],
+    authors: [{ name: "coll", id: 0n }, { name: "viciouscal", id: 0n }],
     settings,
 
     start() {

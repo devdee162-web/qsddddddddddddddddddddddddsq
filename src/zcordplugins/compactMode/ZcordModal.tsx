@@ -80,9 +80,9 @@ const TABS: TabDef[] = [
 
 // ── Modal inner ───────────────────────────────────────────────────────────────
 
-function ZcordModalInner({ onClose }: { onClose: () => void; }) {
+function ZcordModalInner({ onClose, initialTab = null }: { onClose: () => void; initialTab?: string | null; }) {
     const [hovered, setHovered] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<string | null>(initialTab);
 
     function openTab(tabId: string) {
         setActiveTab(tabId);
@@ -199,18 +199,18 @@ function ZcordModalInner({ onClose }: { onClose: () => void; }) {
 
 // ── Modal wrapper ─────────────────────────────────────────────────────────────
 
-function ZcordModal({ modalProps }: { modalProps: ModalProps; }) {
+function ZcordModal({ modalProps, initialTab }: { modalProps: ModalProps; initialTab?: string | null; }) {
     return (
         <ModalRoot {...modalProps} size={ModalSize.LARGE} className="nc-modal-wrapper">
             <ModalContent className="nc-modal-modal-content">
                 <ErrorBoundary message="Failed to render Zcord Settings modal.">
-                    <ZcordModalInner onClose={modalProps.onClose} />
+                    <ZcordModalInner onClose={modalProps.onClose} initialTab={initialTab} />
                 </ErrorBoundary>
             </ModalContent>
         </ModalRoot>
     );
 }
 
-export function openZcordModal() {
-    openModal(modalProps => <ZcordModal modalProps={modalProps} />);
+export function openZcordModal(initialTab: string | null = null) {
+    openModal(modalProps => <ZcordModal modalProps={modalProps} initialTab={initialTab} />);
 }

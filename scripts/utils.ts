@@ -20,7 +20,7 @@ import { Dirent, readdirSync, readFileSync, writeFileSync } from "fs";
 import { access, readFile } from "fs/promises";
 import { join, sep } from "path";
 import { normalize as posixNormalize, sep as posixSep } from "path/posix";
-import { BigIntLiteral, createSourceFile, Identifier, isArrayLiteralExpression, isCallExpression, isExportAssignment, isIdentifier, isObjectLiteralExpression, isPropertyAccessExpression, isPropertyAssignment, isSatisfiesExpression, isStringLiteral, isVariableStatement, NamedDeclaration, NodeArray, ObjectLiteralExpression, PropertyAssignment, ScriptTarget, StringLiteral, SyntaxKind } from "typescript";
+import { BigIntLiteral, CallExpression, createSourceFile, Identifier, isArrayLiteralExpression, isAsExpression, isCallExpression, isExportAssignment, isIdentifier, isObjectLiteralExpression, isPropertyAccessExpression, isPropertyAssignment, isSatisfiesExpression, isStringLiteral, isVariableStatement, NamedDeclaration, NodeArray, ObjectLiteralExpression, PropertyAssignment, ScriptTarget, StringLiteral, SyntaxKind } from "typescript";
 
 import { getPluginTarget } from "./utils.mjs";
 
@@ -143,7 +143,11 @@ export async function parseFile(fileName: string) {
         const call = node.expression;
         if (!isIdentifier(call.expression) || call.expression.text !== "definePlugin") continue;
 
-        const pluginObj = node.expression.arguments[0];
+        let pluginObj = node.expression.arguments[0];
+        // Unwrap `definePlugin({ ... } as any)` / `satisfies` wrappers so wrapped plugins still parse
+        while (isAsExpression(pluginObj) || isSatisfiesExpression(pluginObj)) {
+            pluginObj = pluginObj.expression;
+        }
         if (!isObjectLiteralExpression(pluginObj)) throw fail("no object literal passed to definePlugin");
 
         const data = {
@@ -161,10 +165,17 @@ export async function parseFile(fileName: string) {
 
             switch (key) {
                 case "name":
-                case "description":
-                    if (!isStringLiteral(value)) throw fail(`${key} is not a string literal`);
-                    data[key] = value.text;
+                case "description": {
+                    // `t("...")` i18n wrappers — keep the source literal as metadata
+                    let literal = isStringLiteral(value) ? value : undefined;
+                    if (!literal && isCallExpression(value) && value.arguments.length === 1) {
+                        const [arg] = value.arguments;
+                        if (isStringLiteral(arg)) literal = arg;
+                    }
+                    if (!literal) throw fail(`${key} is not a string literal`);
+                    data[key] = literal.text;
                     break;
+                }
                 case "patches":
                     data.hasPatches = true;
                     break;
@@ -179,14 +190,33 @@ export async function parseFile(fileName: string) {
                                 const descriptionProperty = e.properties.find((p): p is PropertyAssignment =>
                                     isPropertyAssignment(p) && isIdentifier(p.name) && p.name.escapedText === "description"
                                 );
-                                if (!nameProperty || !descriptionProperty) throw fail("command missing required properties");
-                                const name = isStringLiteral(nameProperty.initializer) ? nameProperty.initializer.text : "";
-                                const description = isStringLiteral(descriptionProperty.initializer) ? descriptionProperty.initializer.text : "";
-                                return { name, description };
+                                if (nameProperty && descriptionProperty) {
+                                    const name = isStringLiteral(nameProperty.initializer) ? nameProperty.initializer.text : "";
+                                    const description = isStringLiteral(descriptionProperty.initializer) ? descriptionProperty.initializer.text : "";
+                                    return { name, description };
+                                }
+                                // `{ ...cmd("name", "description", ...) }` — metadata lives on the spread call
+                                const spreadCall = e.properties
+                                    .filter(p => p.kind === SyntaxKind.SpreadAssignment)
+                                    .map(p => (p as any).expression)
+                                    .find((expr): expr is CallExpression => isCallExpression(expr));
+                                if (spreadCall) {
+                                    const [nameArg, descArg] = spreadCall.arguments;
+                                    if (nameArg && isStringLiteral(nameArg)) {
+                                        return {
+                                            name: nameArg.text,
+                                            description: descArg && isStringLiteral(descArg) ? descArg.text : "",
+                                        };
+                                    }
+                                }
+                                throw fail("command missing required properties");
                             } else if (isCallExpression(e) && isIdentifier(e.expression)) {
-                                const [nameArg] = e.arguments;
+                                const [nameArg, descArg] = e.arguments;
                                 if (!isStringLiteral(nameArg)) throw fail("first argument must be a string");
-                                return { name: nameArg.text, description: "" };
+                                return {
+                                    name: nameArg.text,
+                                    description: descArg && isStringLiteral(descArg) ? descArg.text : "",
+                                };
                             } else if (e.kind === SyntaxKind.SpreadElement) {
                                 return undefined;
                             }

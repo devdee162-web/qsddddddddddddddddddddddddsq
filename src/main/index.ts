@@ -107,6 +107,8 @@ if (!IS_VANILLA && !IS_EXTENSION) {
     });
 }
 
+// Patcher Discord host uniquement (besoin de resources/_app.asar).
+// En mode Vesktop/Equibop indépendant, l'injection passe par le preload shell.
 if (IS_DISCORD_DESKTOP) {
     require("./patcher");
 }

@@ -73,10 +73,10 @@ function UpdaterTab() {
 
             if (restarted) {
                 Toasts.show({
-                    message: t("Mise a jour en cours — Zcord va se fermer..."),
+                    message: t("Installation en cours — ne ferme pas Zcord manuellement, l'installateur va prendre le relais."),
                     id: Toasts.genId(),
                     type: Toasts.Type.MESSAGE,
-                    options: { position: Toasts.Position.BOTTOM }
+                    options: { position: Toasts.Position.BOTTOM, duration: 8000 }
                 });
                 return;
             }

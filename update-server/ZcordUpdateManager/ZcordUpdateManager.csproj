@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>ZcordUpdateManager</AssemblyName>
+    <RootNamespace>ZcordUpdateManager</RootNamespace>
+    <Version>2.0.0</Version>
+    <Product>Zcord Update Manager</Product>
+    <Company>Zcord</Company>
+    <Description>Gestionnaire de mises à jour Zcord</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+</Project>

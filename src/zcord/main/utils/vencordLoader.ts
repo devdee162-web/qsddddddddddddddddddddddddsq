@@ -6,6 +6,7 @@
 
 import { existsSync } from "fs";
 import { join } from "path";
+import { app } from "electron";
 
 import { USER_AGENT } from "../constants";
 import { VENCORD_DIR } from "../vencordDir";
@@ -35,7 +36,19 @@ export async function githubGet(endpoint: string) {
     return fetchie(API_BASE + endpoint, opts, { retryOnNetworkError: true });
 }
 
+/**
+ * Ne télécharge JAMAIS un asar distant si un build local/packagé existe déjà.
+ * (Repair / Force Update écrasaient sinon les plugins locaux.)
+ */
 export async function downloadVencordAsar() {
+    if (existsSync(VENCORD_DIR)) {
+        const packaged = join(process.resourcesPath || "", "zcord.asar");
+        if (app.isPackaged || VENCORD_DIR === packaged || VENCORD_DIR.endsWith("zcord.asar") || VENCORD_DIR.endsWith("zcord")) {
+            console.warn("[Zcord] Skip remote asar — keep local build at", VENCORD_DIR);
+            return;
+        }
+    }
+
     await downloadFile(
         `https://git.${domain}/zcord/zcord/releases/download/latest/Zcord.asar`,
         VENCORD_DIR,

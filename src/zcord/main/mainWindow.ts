@@ -458,7 +458,8 @@ function createMainWindow() {
     addSplashLog();
 
     if (process.platform === "darwin" && Settings.store.customTitleBar) win.setWindowButtonVisibility(false);
-    if (process.platform !== "win32" && CommandLine.values["windows-spoof"]) {
+    // Linux: spoof Windows par défaut (même bundle Discord que sous Windows → patches OK)
+    if (process.platform !== "win32" && (CommandLine.values["windows-spoof"] || process.platform === "linux")) {
         spoofGnu(win);
     }
 

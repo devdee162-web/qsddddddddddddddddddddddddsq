@@ -15,7 +15,6 @@ import { AppEvents } from "./events";
 import { Settings } from "./settings";
 import { resolveAssetPath } from "./userAssets";
 import { clearData } from "./utils/clearData";
-import { downloadVencordAsar } from "./utils/vencordLoader";
 
 type TrayVariant = "tray" | "trayUnread" | "traySpeaking" | "trayIdle" | "trayMuted" | "trayDeafened";
 
@@ -262,14 +261,12 @@ export async function initTray(win: BrowserWindow, setIsQuitting: (val: boolean)
                         case 2: // about
                             createAboutWindow();
                             break;
-                        case 3: // repair Zcord
-                            downloadVencordAsar().then(() => {
-                                setTimeout(() => {
-                                    destroyTray();
-                                    app.relaunch();
-                                    app.quit();
-                                }, 0);
-                            });
+                        case 3: // repair Zcord — relaunch only (never download remote asar)
+                            setTimeout(() => {
+                                destroyTray();
+                                app.relaunch();
+                                app.quit();
+                            }, 0);
                             break;
                         case 4: // reset Zcord
                             clearData(win);
@@ -327,7 +324,17 @@ export async function initTray(win: BrowserWindow, setIsQuitting: (val: boolean)
         {
             label: "Repair Zcord",
             async click() {
-                await downloadVencordAsar();
+                // Ne JAMAIS télécharger un asar distant qui écrase le build local.
+                // On resync depuis le package (resources) / redémarre seulement.
+                try {
+                    const { dialog } = require("electron");
+                    await dialog.showMessageBox(win, {
+                        type: "info",
+                        title: "Repair Zcord",
+                        message: "Redémarrage de Zcord pour recharger les plugins…",
+                        buttons: ["OK"]
+                    });
+                } catch { /* */ }
                 destroyTray();
                 app.relaunch();
                 app.quit();

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zcord — Gestionnaire de mises à jour</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.35C17.25 23.15 21 18.25 21 13V7L12 2z" fill="currentColor" opacity=".15"/><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.35C17.25 23.15 21 18.25 21 13V7L12 2z" stroke="currentColor" stroke-width="1.5"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span>Zcord</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav active" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Tableau de bord
+        </button>
+        <button class="nav" data-page="updates">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Mises à jour
+          <span id="badge-updates" class="nav-badge">0</span>
+        </button>
+        <button class="nav" data-page="create">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Créer une MAJ
+        </button>
+        <button class="nav" data-page="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Historique
+        </button>
+        <button class="nav" data-page="sources">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Sources
+        </button>
+        <button class="nav" data-page="planning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Planification
+        </button>
+        <button class="nav" data-page="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Paramètres
+        </button>
+        <button class="nav" data-page="logs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Logs
+        </button>
+        <button class="nav" data-page="stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Statistiques
+        </button>
+        <button class="nav" data-page="help">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Aide &amp; Support
+        </button>
+      </nav>
+      <div class="sidebar-status">
+        <div class="status-title">Statut du système</div>
+        <div class="status-row">
+          <span class="status-dot"></span>
+          <span class="status-text">En ligne</span>
+        </div>
+        <button class="btn-status" data-page="logs">Voir les logs</button>
+      </div>
+    </aside>
+
+    <div class="content-wrap">
+      <header class="header">
+        <div class="header-left">
+          <h1 id="page-title">Gestionnaire de mises à jour</h1>
+          <p class="header-sub" id="page-sub">Gardez votre application à jour et sécurisée</p>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-theme" title="Thème">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </button>
+          <button class="icon-btn notif-btn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <span class="notif-dot"></span>
+          </button>
+          <div class="user-pill">
+            <div class="avatar">Z</div>
+            <div class="user-info">
+              <span class="user-name">Admin</span>
+              <span class="user-role">Administrateur</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <!-- Dashboard -->
+        <section id="page-dashboard" class="page active">
+          <div class="kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-label">Mises à jour disponibles</div>
+                <div class="kpi-value" id="kpi-pending">0</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-ring-wrap">
+                <svg class="kpi-ring" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="#2a2540" stroke-width="6"/>
+                  <circle id="health-ring" cx="40" cy="40" r="34" fill="none" stroke="#8b5cf6" stroke-width="6" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="17" transform="rotate(-90 40 40)"/>
+                </svg>
+                <span class="kpi-ring-val" id="kpi-health">92%</span>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-label">Système à jour</div>
+                <div class="kpi-sub green">Bon état général</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-label">Dernière vérification</div>
+                <div class="kpi-value sm" id="kpi-lastcheck">—</div>
+                <div class="kpi-sub muted" id="kpi-lastcheck-date">—</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-label">Espace libéré</div>
+                <div class="kpi-value sm" id="kpi-space">2.4 GB</div>
+                <div class="kpi-sub muted">Ce mois-ci</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Mises à jour disponibles</h2>
+              <div class="panel-actions">
+                <button class="icon-btn sm" id="btn-refresh" title="Actualiser">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                </button>
+                <button class="btn primary" id="btn-update-all">Tout mettre à jour</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Version actuelle</th>
+                    <th>Nouvelle version</th>
+                    <th>Taille</th>
+                    <th>Priorité</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-updates-table"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bottom-row">
+            <div class="widget">
+              <h3>Progression</h3>
+              <div class="donut-wrap">
+                <svg class="donut" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#2a2540" stroke-width="12"/>
+                  <circle id="donut-success" cx="60" cy="60" r="48" fill="none" stroke="#22c55e" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                  <circle id="donut-pending" cx="60" cy="60" r="48" fill="none" stroke="#8b5cf6" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                  <circle id="donut-failed" cx="60" cy="60" r="48" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="donut-center">
+                  <span id="donut-pct">75%</span>
+                </div>
+              </div>
+              <div class="legend">
+                <div class="legend-item"><span class="dot green"></span><span id="leg-installed">0 installées</span></div>
+                <div class="legend-item"><span class="dot purple"></span><span id="leg-pending">0 en attente</span></div>
+                <div class="legend-item"><span class="dot red"></span><span id="leg-failed">0 échec</span></div>
+              </div>
+            </div>
+
+            <div class="widget">
+              <h3>Historique récent</h3>
+              <div id="dash-history" class="timeline"></div>
+              <button class="btn link" data-page="history">Voir tout l'historique</button>
+            </div>
+
+            <div class="widget">
+              <h3>Planification</h3>
+              <div class="plan-item">
+                <div class="plan-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div>
+                  <div class="plan-label">Prochaine vérification</div>
+                  <div class="plan-value" id="plan-next">Demain à 03:00</div>
+                </div>
+              </div>
+              <div class="plan-item toggle-row">
+                <div>
+                  <div class="plan-label">Vérification automatique</div>
+                  <div class="plan-sub muted">Activée</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="plan-autocheck" checked disabled />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="plan-item">
+                <div class="plan-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div>
+                  <div class="plan-label">Fenêtre de maintenance</div>
+                  <div class="plan-value" id="plan-maint">02:00 - 05:00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="app-footer">
+            <span>Version du panel : 1.0.0</span>
+            <span class="footer-status"><span class="status-dot sm"></span> À jour</span>
+          </footer>
+        </section>
+
+        <!-- Liste complète -->
+        <section id="page-updates" class="page">
+          <div class="panel">
+            <div class="panel-head"><h2>Toutes les releases</h2></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Nom</th><th>Version</th><th>Type</th><th>Taille</th><th>Statut</th><th>Actions</th></tr></thead>
+                <tbody id="updates-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Créer MAJ -->
+        <section id="page-create" class="page">
+          <div class="panel form-panel">
+            <h2>Nouvelle mise à jour</h2>
+            <div class="form-grid">
+              <label>Nom<input id="f-name" placeholder="Zcord 1.27.0" /></label>
+              <label>Version<input id="f-version" placeholder="1.27.0" /></label>
+              <label>Type
+                <select id="f-type">
+                  <option value="patch">Correctif</option>
+                  <option value="minor" selected>Mineure</option>
+                  <option value="major">Majeure</option>
+                </select>
+              </label>
+              <label>Fichier (Setup.exe ou zip)<input type="file" id="f-file" /></label>
+              <label class="full">Notes de version<textarea id="f-notes" rows="4" placeholder="Corrections, nouveautés..."></textarea></label>
+              <label class="check"><input type="checkbox" id="f-autocheck" checked /> Vérification automatique</label>
+              <label class="check"><input type="checkbox" id="f-backup" checked /> Backup avant installation</label>
+            </div>
+            <div class="form-actions">
+              <button class="btn" id="btn-save-draft">Enregistrer brouillon</button>
+              <button class="btn primary" id="btn-save-publish">Enregistrer + Publier GitHub</button>
+            </div>
+            <p class="hint">Publier lance <code>buildInstaller:full</code> + upload GitHub Releases.</p>
+          </div>
+        </section>
+
+        <section id="page-history" class="page">
+          <div class="panel"><div id="history-list" class="timeline full"></div></div>
+        </section>
+
+        <section id="page-logs" class="page">
+          <div class="panel"><div id="logs-list" class="log-list"></div></div>
+        </section>
+
+        <section id="page-settings" class="page">
+          <div class="panel form-panel">
+            <h2>Paramètres</h2>
+            <div class="form-grid">
+              <label>GitHub Owner<input id="s-owner" /></label>
+              <label>GitHub Repo<input id="s-repo" /></label>
+              <label class="check"><input type="checkbox" id="s-autocheck" /> Vérification auto</label>
+              <label>Fenêtre maintenance début<input id="s-maint-start" placeholder="02:00" /></label>
+              <label>Fenêtre maintenance fin<input id="s-maint-end" placeholder="05:00" /></label>
+            </div>
+            <button class="btn primary" id="btn-save-settings">Sauvegarder</button>
+          </div>
+        </section>
+
+        <section id="page-sources" class="page">
+          <div class="panel form-panel">
+            <h2>Sources de mises à jour</h2>
+            <div class="source-card">
+              <div class="source-icon github">GH</div>
+              <div><strong>GitHub Releases</strong><p class="muted" id="source-github-url">—</p></div>
+              <span class="tag published">Actif</span>
+            </div>
+            <div class="source-card">
+              <div class="source-icon local">API</div>
+              <div><strong>API locale</strong><p class="muted">http://127.0.0.1:8743/api/check</p></div>
+              <span class="tag published">Actif</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-planning" class="page">
+          <div class="panel form-panel">
+            <h2>Planification</h2>
+            <div class="form-grid">
+              <label>Prochaine vérification<input id="p-next" value="03:00" /></label>
+              <label class="check"><input type="checkbox" id="p-autocheck" checked /> Vérification automatique</label>
+              <label>Début maintenance<input id="p-maint-start" placeholder="02:00" /></label>
+              <label>Fin maintenance<input id="p-maint-end" placeholder="05:00" /></label>
+            </div>
+            <button class="btn primary" id="btn-save-planning">Sauvegarder</button>
+          </div>
+        </section>
+
+        <section id="page-stats" class="page">
+          <div class="kpi-row">
+            <div class="kpi-card"><div class="kpi-body"><div class="kpi-label">Installations réussies</div><div class="kpi-value" id="stat-success">0</div></div></div>
+            <div class="kpi-card"><div class="kpi-body"><div class="kpi-label">Échecs</div><div class="kpi-value" id="stat-failed">0</div></div></div>
+            <div class="kpi-card"><div class="kpi-body"><div class="kpi-label">Version publiée</div><div class="kpi-value sm" id="stat-published">—</div></div></div>
+            <div class="kpi-card"><div class="kpi-body"><div class="kpi-label">Brouillons</div><div class="kpi-value" id="stat-drafts">0</div></div></div>
+          </div>
+        </section>
+
+        <section id="page-help" class="page">
+          <div class="panel form-panel">
+            <h2>Aide &amp; Support</h2>
+            <p class="help-text">Gestionnaire de mises à jour Zcord — application bureau Electron.</p>
+            <ul class="help-list">
+              <li><strong>Créer une MAJ</strong> — définir version, notes, publier sur GitHub</li>
+              <li><strong>Client C</strong> — <code>zcord-updater.exe check</code> via API locale</li>
+              <li><strong>API</strong> — <code>GET /api/check?version=1.26.9</code></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -7,8 +7,6 @@
 import { definePluginSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs, EquicordDevs } from "@utils/constants";
-import { useTimer } from "@utils/react";
-import { formatDurationMs } from "@utils/text";
 import definePlugin, { OptionType } from "@utils/types";
 import { PassiveUpdateState, VoiceState } from "@vencord/discord-types";
 import { FluxDispatcher, GuildStore, React, UserStore } from "@webpack/common";
@@ -108,7 +106,7 @@ let runOneTime = true;
 
 export default definePlugin({
     name: "CallTimer",
-    enabledByDefault: true,
+    enabledByDefault: false,
     description: "Add call timers for all users in voice channels and in the connection status.",
     tags: ["Voice", "Utility"],
     authors: [Devs.Ven, EquicordDevs.MaxHerbold, Devs.D3SOX],
@@ -134,19 +132,14 @@ export default definePlugin({
                     predicate: () => settings.store.showWithoutHover,
                 }
             ]
-        },
-        {
-            find: "renderConnectionStatus(){",
-            replacement: {
-                match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i)(?=,|}\))/,
-                replace: "$1[$2,$self.renderConnectionTimer(this.props?.channel?.id)]"
-            }
         }
+        // Plus de patch RTCConnectionMenu : Discord a changé le panneau → crash au join vocal
     ],
 
     flux: {
         VOICE_STATE_UPDATES({ voiceStates }: { voiceStates: VoiceState[]; }) {
-            const myId = UserStore.getCurrentUser().id;
+            const myId = UserStore.getCurrentUser()?.id;
+            if (!myId) return;
 
             for (const state of voiceStates) {
                 const { userId, channelId, guildId } = state;
@@ -252,7 +245,7 @@ export default definePlugin({
             // join time is unknown
             return;
         }
-        if (userId === UserStore.getCurrentUser().id && !settings.store.trackSelf) {
+        if (userId === UserStore.getCurrentUser()?.id && !settings.store.trackSelf) {
             // don't show for self
             return;
         }
@@ -263,18 +256,4 @@ export default definePlugin({
             </ErrorBoundary>
         );
     },
-
-    renderConnectionTimer(channelId: string) {
-        return <ErrorBoundary noop>
-            <this.ConnectionTimer channelId={channelId} />
-        </ErrorBoundary>;
-    },
-
-    ConnectionTimer({ channelId }: { channelId: string; }) {
-        const time = useTimer({
-            deps: [channelId]
-        });
-
-        return <p style={{ margin: 0, fontFamily: "var(--font-code)" }}>{formatDurationMs(time, settings.store.format === "human")}</p>;
-    }
 });

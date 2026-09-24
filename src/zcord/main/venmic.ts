@@ -66,7 +66,16 @@ function getRendererAudioServicePid() {
     );
 }
 
-ipcMain.handle(IpcEvents.VIRT_MIC_LIST, () => {
+function handleOnce(channel: string, listener: (...args: any[]) => any) {
+    try {
+        ipcMain.removeHandler(channel);
+    } catch {
+        /* first registration */
+    }
+    ipcMain.handle(channel, listener);
+}
+
+handleOnce(IpcEvents.VIRT_MIC_LIST, () => {
     const audioPid = getRendererAudioServicePid();
 
     const { granularSelect } = Settings.store.audio ?? {};
@@ -78,7 +87,7 @@ ipcMain.handle(IpcEvents.VIRT_MIC_LIST, () => {
     return targets ? { ok: true, targets, hasPipewirePulse } : { ok: false, isGlibCxxOutdated };
 });
 
-ipcMain.handle(IpcEvents.VIRT_MIC_START, (_, include: Node[]) => {
+handleOnce(IpcEvents.VIRT_MIC_START, (_, include: Node[]) => {
     const pid = getRendererAudioServicePid();
     const { ignoreDevices, ignoreInputMedia, ignoreVirtual, workaround } = Settings.store.audio ?? {};
 
@@ -103,7 +112,7 @@ ipcMain.handle(IpcEvents.VIRT_MIC_START, (_, include: Node[]) => {
     return obtainVenmic()?.link(data);
 });
 
-ipcMain.handle(IpcEvents.VIRT_MIC_START_SYSTEM, (_, exclude: Node[]) => {
+handleOnce(IpcEvents.VIRT_MIC_START_SYSTEM, (_, exclude: Node[]) => {
     const pid = getRendererAudioServicePid();
 
     const { workaround, ignoreDevices, ignoreInputMedia, ignoreVirtual, onlySpeakers, onlyDefaultSpeakers } =
@@ -132,4 +141,4 @@ ipcMain.handle(IpcEvents.VIRT_MIC_START_SYSTEM, (_, exclude: Node[]) => {
     return obtainVenmic()?.link(data);
 });
 
-ipcMain.handle(IpcEvents.VIRT_MIC_STOP, () => obtainVenmic()?.unlink());
+handleOnce(IpcEvents.VIRT_MIC_STOP, () => obtainVenmic()?.unlink());

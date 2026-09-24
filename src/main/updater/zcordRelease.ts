@@ -567,16 +567,60 @@ export function isAuthenticodeSigned(filePath: string): boolean {
 export function runSetupInstaller(setupPath: string): Promise<void> {
     validateSetup(setupPath);
     return new Promise((resolve, reject) => {
+        if (process.platform !== "win32") {
+            reject(new Error("Setup Windows uniquement"));
+            return;
+        }
+
+        let settled = false;
+        const finish = (err?: Error) => {
+            if (settled) return;
+            settled = true;
+            if (err) reject(err);
+            else resolve();
+        };
+
+        const launchViaPowerShell = () => {
+            const { execFile } = require("child_process") as typeof import("child_process");
+            const argList = SETUP_SILENT_ARGS.map(a => `'${a}'`).join(",");
+            const ps = `Start-Process -FilePath '${setupPath.replace(/'/g, "''")}' -ArgumentList ${argList} -WindowStyle Hidden`;
+            execFile("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], err => {
+                if (err) finish(err);
+                else {
+                    console.log("[Zcord] Setup lance via PowerShell");
+                    setTimeout(() => finish(), 3000);
+                }
+            });
+        };
+
         const child = spawn(setupPath, SETUP_SILENT_ARGS, {
             detached: true,
             stdio: "ignore",
             windowsHide: true
         });
-        child.on("error", reject);
-        child.unref();
-        // Laisser Inno Setup fermer Zcord (CLOSEAPPLICATIONS) puis installer
-        setTimeout(resolve, 5000);
+
+        child.once("error", err => {
+            console.warn("[Zcord] spawn Setup echoue:", err.message);
+            launchViaPowerShell();
+        });
+
+        child.once("spawn", () => {
+            if (!child.pid) {
+                launchViaPowerShell();
+                return;
+            }
+            console.log("[Zcord] Setup lance (pid", child.pid, ")");
+            child.unref();
+            setTimeout(() => finish(), 3000);
+        });
     });
+}
+
+/** Supprime le Setup temporaire apres que Inno Setup a eu le temps de le lire */
+export function scheduleSetupCleanup(setupPath: string): void {
+    setTimeout(() => {
+        try { rmSync(setupPath, { force: true }); } catch {}
+    }, 15 * 60 * 1000);
 }
 
 export function applyPendingUpdateSync(): void {

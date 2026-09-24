@@ -20,17 +20,9 @@ import {
     UpdaterTab,
     VencordTab,
 } from "@components/settings";
+import { openSettingsTabModal } from "@components/settings/tabs/BaseTab";
 import { CreateThemeTab } from "@components/settings/tabs/createTheme/CreateThemeTab";
 import { PencilSparkleIcon } from "@components/settings/tabs/createTheme/PencilSparkleIcon";
-
-function CodeIcon(props: IconProps) {
-    return (
-        <svg {...props} width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-        </svg>
-    );
-}
 import IconsTab from "@zcordplugins/iconViewer/components/IconsTab";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -40,6 +32,119 @@ import { waitFor } from "@webpack";
 import { t } from "@api/i18n";
 import { React } from "@webpack/common";
 import type { ComponentType, PropsWithChildren, ReactNode } from "react";
+
+const FAB_ID = "zcord-plugins-fab";
+const FAB_STYLE_ID = "zcord-plugins-fab-style";
+const BANNER_ID = "zcord-settings-plugins-banner";
+
+function ensurePluginsFab() {
+    if (document.getElementById(FAB_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = FAB_STYLE_ID;
+    style.textContent = `
+#${FAB_ID}{
+  position:fixed;right:18px;bottom:72px;z-index:2147483647;
+  display:flex;align-items:center;gap:8px;
+  padding:12px 16px;border-radius:999px;border:none;cursor:pointer;
+  background:#5865f2;color:#fff;font:700 14px/1.2 gg sans,system-ui,sans-serif;
+  box-shadow:0 10px 28px rgba(0,0,0,.45);
+  -webkit-app-region:no-drag;pointer-events:auto;
+}
+#${FAB_ID}:hover{filter:brightness(1.08)}
+body.zcord-stealth #${FAB_ID},
+body.zcord-compact #${FAB_ID}{display:flex !important}
+#${BANNER_ID}{
+  position:sticky;top:0;z-index:1000;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 0 12px;padding:12px 14px;border-radius:8px;
+  background:#5865f2;color:#fff;font:600 13px/1.3 gg sans,system-ui,sans-serif;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+}
+#${BANNER_ID} button{
+  border:none;border-radius:6px;padding:8px 12px;cursor:pointer;
+  background:#fff;color:#5865f2;font:700 12px/1 gg sans,system-ui,sans-serif;
+}
+`;
+    document.head.appendChild(style);
+}
+
+function openPluginsUi() {
+    openSettingsTabModal(PluginsTab);
+}
+
+function openZcordUi() {
+    // Lazy: évite de casser le plugin Settings core au chargement
+    try {
+        const mod = require("@zcordplugins/compactMode/ZcordModal");
+        mod.openZcordModal?.(null);
+    } catch {
+        openSettingsTabModal(PluginsTab);
+    }
+}
+
+function mountPluginsFab() {
+    ensurePluginsFab();
+    let btn = document.getElementById(FAB_ID) as HTMLButtonElement | null;
+    if (!btn) {
+        btn = document.createElement("button");
+        btn.id = FAB_ID;
+        btn.type = "button";
+        document.body.appendChild(btn);
+    }
+    btn.textContent = "Zcord";
+    btn.title = "Réglages Zcord indépendants — Plugins / Thèmes (Ctrl+Shift+P)";
+    btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openZcordUi();
+    };
+}
+
+function findSettingsSidebarRoot(): HTMLElement | null {
+    // Cherche la colonne gauche des User Settings (Déconnexion / Log Out en bas)
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>("div,nav,aside"));
+    for (const el of nodes) {
+        const t = (el.innerText || "").replace(/\s+/g, " ");
+        if (!t.includes("Déconnexion") && !t.includes("Log Out")) continue;
+        if (!(t.includes("Apparence") || t.includes("Appearance") || t.includes("Nitro"))) continue;
+        if (el.clientWidth < 180 || el.clientWidth > 420) continue;
+        if (el.clientHeight < 300) continue;
+        return el;
+    }
+    return null;
+}
+
+function mountSettingsBanner() {
+    ensurePluginsFab();
+    const side = findSettingsSidebarRoot();
+    if (!side) {
+        document.getElementById(BANNER_ID)?.remove();
+        return;
+    }
+    if (document.getElementById(BANNER_ID)) return;
+
+    const banner = document.createElement("div");
+    banner.id = BANNER_ID;
+    banner.innerHTML = `<span>Zcord indépendant</span>`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Plugins & réglages";
+    btn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openZcordUi();
+    });
+    banner.appendChild(btn);
+
+    // Insère en haut de la sidebar settings
+    side.insertBefore(banner, side.firstChild);
+}
+
+function unmountPluginsFab() {
+    document.getElementById(FAB_ID)?.remove();
+    document.getElementById(BANNER_ID)?.remove();
+    document.getElementById(FAB_STYLE_ID)?.remove();
+}
 
 const enum LayoutType {
     ROOT = 0,
@@ -138,8 +243,8 @@ const settings = definePluginSettings({
         type: OptionType.SELECT,
         description: "Where to put the Zcord settings section",
         options: [
-            { label: "At the very top", value: "top" },
-            { label: "Above the Nitro section", value: "aboveNitro", default: true },
+            { label: "At the very top", value: "top", default: true },
+            { label: "Above the Nitro section", value: "aboveNitro" },
             { label: "Below the Nitro section", value: "belowNitro" },
             { label: "Above Activity Settings", value: "aboveActivity" },
             { label: "Below Activity Settings", value: "belowActivity" },
@@ -172,11 +277,17 @@ export default definePlugin({
 
     patches: [
         {
-            find: ".buildLayout().map",
-            replacement: {
-                match: /(\i)\.buildLayout\(\)(?=\.map)/,
-                replace: "$self.buildLayout($1)"
-            }
+            find: ".buildLayout()",
+            replacement: [
+                {
+                    match: /(\i)\.buildLayout\(\)(?=\.map)/,
+                    replace: "$self.buildLayout($1)"
+                },
+                {
+                    match: /(\i)\.buildLayout\(\)(?=\?\.)/,
+                    replace: "$self.buildLayout($1)"
+                }
+            ]
         },
         {
             find: "getWebUserSettingFromSection",
@@ -207,29 +318,58 @@ export default definePlugin({
     start() {
         enableStyle(iconStyles);
         enableStyle(zcordHomeIconStyle);
+        const mount = () => {
+            mountPluginsFab();
+            mountSettingsBanner();
+        };
+        if (document.body) mount();
+        else document.addEventListener("DOMContentLoaded", mount, { once: true });
+
+        this._settingsObs = new MutationObserver(() => mountSettingsBanner());
+        this._settingsObs.observe(document.documentElement, { childList: true, subtree: true });
+
+        // Secours : Ctrl+Shift+P → modal Plugins
+        this._onKey = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === "KeyP") {
+                e.preventDefault();
+                e.stopPropagation();
+                openPluginsUi();
+            }
+            if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === "KeyZ") {
+                e.preventDefault();
+                e.stopPropagation();
+                openZcordUi();
+            }
+        };
+        document.addEventListener("keydown", this._onKey, true);
     },
 
     stop() {
         disableStyle(iconStyles);
         disableStyle(zcordHomeIconStyle);
+        unmountPluginsFab();
+        this._settingsObs?.disconnect();
+        this._settingsObs = undefined;
+        if (this._onKey) document.removeEventListener("keydown", this._onKey, true);
     },
+
+    _onKey: undefined as ((e: KeyboardEvent) => void) | undefined,
+    _settingsObs: undefined as MutationObserver | undefined,
 
     buildEntry(options: EntryOptions): SettingsLayoutNode {
         const { key, title, panelTitle = title, Component, Icon } = options;
 
+        // Structure alignée Vencord upstream — pas de useSetting custom (Discord les filtre)
         const panel: SettingsLayoutNode = {
             key: key + "_panel",
             type: LayoutTypes.PANEL,
             useTitle: () => t(panelTitle),
-            useSetting: alwaysVisible,
             buildLayout: () => [{
                 type: LayoutTypes.CATEGORY,
                 key: key + "_category",
-                useSetting: alwaysVisible,
                 buildLayout: () => [{
                     type: LayoutTypes.CUSTOM,
                     key: key + "_custom",
-                    useSetting: alwaysVisible,
                     Component: () => (
                         <ErrorBoundary>
                             <Component />
@@ -244,8 +384,13 @@ export default definePlugin({
             key,
             type: LayoutTypes.SIDEBAR_ITEM,
             useTitle: () => t(title),
-            useSetting: alwaysVisible,
-            icon: settingsIcon(Icon, Icon === ZcordIcon),
+            legacySearchKey: title.toUpperCase(),
+            getLegacySearchKey: () => title.toUpperCase(),
+            icon: () => (
+                <span className={Icon === ZcordIcon ? "zc-settings-icon zc-settings-icon--logo" : "zc-settings-icon"} aria-hidden="true">
+                    <Icon width={20} height={20} className="zc-settings-icon-svg" />
+                </span>
+            ),
             buildLayout: () => [panel]
         });
     },
@@ -257,9 +402,21 @@ export default definePlugin({
     buildLayout(originalLayoutBuilder: SettingsLayoutBuilder) {
         try {
             const layout = originalLayoutBuilder.buildLayout();
-            if (originalLayoutBuilder.key !== "$Root") return layout;
             if (!Array.isArray(layout)) return layout;
-            if (layout.some(s => s?.key === "equicord_section")) return layout;
+
+            const builderKey = String(originalLayoutBuilder?.key ?? "");
+            const looksLikeRootKey = /^(?:\$)?root$/i.test(builderKey);
+            const looksLikeRootLayout = layout.some(s =>
+                typeof s?.key === "string" && /^(?:user|billing|games_and_apps|activity|utility|logout|profile)_section$/.test(s.key)
+            );
+            // Ancien Discord: key === "$Root". Nouveau: ROOT / heuristique sections.
+            if (!looksLikeRootKey && !looksLikeRootLayout) return layout;
+            // Éviter d'injecter dans des sous-layouts trop petits
+            if (!looksLikeRootKey && layout.length < 4) return layout;
+
+            if (layout.some(s => s?.key === "equicord_section" || s?.key === "zcord_section" || s?.key === "vencord_section")) {
+                return layout;
+            }
 
             const { buildEntry } = this;
             const fullEntries: SettingsLayoutNode[] = [
@@ -338,38 +495,37 @@ export default definePlugin({
             const entries = fullEntries.filter(entry => !!entry && typeof entry === "object");
 
             const equicordSection: SettingsLayoutNode = {
-                key: "equicord_section",
+                key: "zcord_section",
                 type: LayoutTypes.SECTION,
-                useSetting: alwaysVisible,
-                icon: settingsIcon(ZcordIcon, true),
-                useTitle: () => {
-                    try { if (localStorage.getItem("Zcord_stealthMode") === "1") return ""; } catch { }
-                    return t("Zcord Settings");
-                },
-                buildLayout: () => {
-                    try { if (localStorage.getItem("Zcord_stealthMode") === "1") return [entries[0]]; } catch { }
-                    return entries;
-                }
+                useTitle: () => t("Zcord Settings"),
+                buildLayout: () => entries
             };
 
             const { settingsLocation } = settings.store;
-            const places: Record<SettingsLocation, string> = {
-                top: "user_section",
-                aboveNitro: "billing_section",
-                belowNitro: "billing_section",
-                aboveActivity: "activity_section",
-                belowActivity: "activity_section",
-                bottom: "logout_section"
+            const places: Record<SettingsLocation, string[]> = {
+                top: ["user_section"],
+                aboveNitro: ["billing_section"],
+                belowNitro: ["billing_section"],
+                aboveActivity: ["games_and_apps_section", "activity_section"],
+                belowActivity: ["games_and_apps_section", "activity_section"],
+                bottom: ["utility_section", "logout_section"]
             };
 
-            const key = places[settingsLocation] ?? places.top;
-            let idx = layout.findIndex(s => typeof s?.key === "string" && s.key === key);
-            if (idx === -1) idx = 2;
-            else if (settingsLocation.startsWith("below")) idx += 1;
+            const loc = (settingsLocation ?? "top") as SettingsLocation;
+            const keys = places[loc] ?? places.top;
+            let idx = -1;
+            for (const k of keys) {
+                idx = layout.findIndex(s => typeof s?.key === "string" && s.key === k);
+                if (idx !== -1) break;
+            }
+            // Toujours visible : en tête si introuvable / si top
+            if (idx === -1 || loc === "top") idx = 0;
+            else if (String(loc).startsWith("below")) idx += 1;
 
             layout.splice(idx, 0, equicordSection);
             return layout;
-        } catch {
+        } catch (e) {
+            console.error("[Zcord Settings] buildLayout failed", e);
             try {
                 return originalLayoutBuilder.buildLayout();
             } catch {

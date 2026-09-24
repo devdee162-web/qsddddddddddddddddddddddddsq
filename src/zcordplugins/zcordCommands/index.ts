@@ -18,7 +18,7 @@ export default definePlugin({
         {
             name: "zcord",
             description: "Affiche les infos du client Zcord",
-            inputType: ApplicationCommandInputType.BUILT_IN,
+            inputType: ApplicationCommandInputType.BUILT_IN_TEXT,
             options: [],
             execute: (_opts, ctx) => {
                 sendBotMessage(ctx.channel.id, {
@@ -36,7 +36,7 @@ export default definePlugin({
         {
             name: "zcord-plugins",
             description: "Ouvre les réglages plugins Zcord",
-            inputType: ApplicationCommandInputType.BUILT_IN,
+            inputType: ApplicationCommandInputType.BUILT_IN_TEXT,
             options: [],
             execute: async (_opts, ctx) => {
                 try {
@@ -51,7 +51,7 @@ export default definePlugin({
         {
             name: "zcord-restart",
             description: "Recharge Zcord",
-            inputType: ApplicationCommandInputType.BUILT_IN,
+            inputType: ApplicationCommandInputType.BUILT_IN_TEXT,
             options: [],
             execute: (_opts, ctx) => {
                 sendBotMessage(ctx.channel.id, {

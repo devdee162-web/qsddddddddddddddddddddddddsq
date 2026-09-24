@@ -7,7 +7,6 @@
 import "./styles.css";
 
 import { definePluginSettings } from "@api/Settings";
-import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import { findByProps, findByPropsLazy } from "@webpack";
 import { ChannelStore, FluxDispatcher, React,UserStore, useStateFromStores } from "@webpack/common";
@@ -69,7 +68,7 @@ function isStreaming(): boolean {
 export default definePlugin({
     name: "NoDMWhileStreaming",
     description: "Hides DM and Group DM notifications and sidebar items while you are streaming",
-    authors: [Devs.Unknown],
+    authors: [{ name: "Unknown", id: 0n }],
     settings,
     patches: [
         // Filters DMs (type 1) and Group DMs (type 3) from the private channel list
