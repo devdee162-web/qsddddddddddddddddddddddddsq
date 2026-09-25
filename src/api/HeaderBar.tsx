@@ -554,24 +554,8 @@ function ChannelToolbarButtons() {
 
 /** @internal Injected by HeaderBarAPI patch (do NOT call directly) */
 export function _addHeaderBarButtons() {
-    return [
-        <style key="zcord-headerbar-style">{`
-            .zcord-header-btn {
-                display: flex;
-                align-items: center;
-                margin: 0 2px;
-                padding: 3px;
-                border-radius: 4px;
-                color: var(--interactive-normal, oklab(0.745437 0.00131872 -0.00849736)) !important;
-                transition: background-color 0.15s ease-out, color 0.15s ease-out;
-            }
-            .zcord-header-btn:hover {
-                background-color: var(--background-modifier-hover, rgba(78, 80, 88, 0.3));
-                color: var(--interactive-hover, oklab(0.89908 -0.00192902 -0.01033)) !important;
-            }
-        `}</style>,
-        <HeaderBarButtons key="vc-header-bar-buttons" />
-    ];
+    // Ne rien injecter dans la titlebar tant que le layout Discord n'est pas stable
+    return [];
 }
 
 /** @internal Injected by HeaderBarAPI patch (do NOT call directly) */

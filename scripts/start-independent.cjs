@@ -59,7 +59,7 @@ async function main() {
         const settings = existsSync(settingsPath) ? readJson(settingsPath) : {};
         settings.discordBranch = settings.discordBranch || "stable";
         settings.plugins = settings.plugins || {};
-        for (const name of ["Settings", "CommandsAPI", "CordCommands", "NoTrack", "YTMDesktopRichPresence", "PerfHud", "UI Optimisations"]) {
+        for (const name of ["Settings", "CommandsAPI", "CordCommands", "NoTrack", "YTMDesktopRichPresence", "UI Optimisations"]) {
             settings.plugins[name] = settings.plugins[name] || {};
             settings.plugins[name].enabled = true;
         }

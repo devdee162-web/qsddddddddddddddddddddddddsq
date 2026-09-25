@@ -130,7 +130,7 @@ export default definePlugin({
     description: "Latence saisie en ms (🟢 < 100 ms = excellent). Tape dans le chat pour mesurer.",
     authors: [{ name: "Zcord", id: 0n }],
     tags: ["Utility", "Performance"],
-    enabledByDefault: true,
+    enabledByDefault: false,
     settings,
 
     start() {

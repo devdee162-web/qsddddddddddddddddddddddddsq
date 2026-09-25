@@ -9,7 +9,7 @@ import { IpcEvents } from "@shared/IpcEvents";
 import { SettingsStore } from "@shared/SettingsStore";
 import { mergeDefaults } from "@utils/mergeDefaults";
 import { ipcMain } from "electron";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
 
 import { NATIVE_SETTINGS_FILE, SETTINGS_DIR, SETTINGS_FILE } from "./utils/constants";
 
@@ -22,7 +22,27 @@ function readSettings<T = object>(name: string, file: string): Partial<T> {
         if (err?.code !== "ENOENT")
             console.error(`Failed to read ${name} settings`, err);
 
-        return {};
+        // Recover from the last good backup instead of silently resetting to defaults
+        // (a kill/crash mid-write used to corrupt settings.json and wipe all plugin states)
+        try {
+            const backup = JSON.parse(readFileSync(file + ".bak", "utf-8"));
+            console.error(`Recovered ${name} settings from backup`);
+            return backup;
+        } catch {
+            return {};
+        }
+    }
+}
+
+/** Atomic write: a process killed mid-write can no longer corrupt the settings file. */
+function writeSettingsAtomic(file: string, data: string) {
+    const tmp = file + ".tmp";
+    writeFileSync(tmp, data);
+    renameSync(tmp, file);
+    try {
+        writeFileSync(file + ".bak", data);
+    } catch (e) {
+        console.error(`Failed to write settings backup for ${file}`, e);
     }
 }
 
@@ -32,7 +52,7 @@ export const RendererSettings = new SettingsStore(readSettings<Settings>("render
 
 const saveRendererSettings = debounce(() => {
     try {
-        writeFileSync(SETTINGS_FILE, JSON.stringify(RendererSettings.plain, null, 4));
+        writeSettingsAtomic(SETTINGS_FILE, JSON.stringify(RendererSettings.plain, null, 4));
     } catch (e) {
         console.error("Failed to write renderer settings", e);
     }
@@ -68,7 +88,7 @@ export const NativeSettings = new SettingsStore(nativeSettings as NativeSettings
 
 const saveNativeSettings = debounce(() => {
     try {
-        writeFileSync(NATIVE_SETTINGS_FILE, JSON.stringify(NativeSettings.plain, null, 4));
+        writeSettingsAtomic(NATIVE_SETTINGS_FILE, JSON.stringify(NativeSettings.plain, null, 4));
     } catch (e) {
         console.error("Failed to write native settings", e);
     }

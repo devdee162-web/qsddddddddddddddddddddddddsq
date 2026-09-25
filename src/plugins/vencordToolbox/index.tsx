@@ -85,15 +85,8 @@ export default definePlugin({
 
     settings,
 
-    patches: [
-        {
-            find: '?"BACK_FORWARD_NAVIGATION":',
-            replacement: {
-                match: /(trailing:.{0,50}?)\i\.Fragment,(?=\{children:\[)/,
-                replace: "$1$self.TrailingWrapper,"
-            }
-        }
-    ],
+    // Patch titlebar désactivé (même zone que HeaderBarAPI — cassait "Oh no!")
+    patches: [],
 
     TrailingWrapper({ children }: PropsWithChildren) {
         return (

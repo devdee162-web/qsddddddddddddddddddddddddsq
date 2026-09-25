@@ -17,7 +17,7 @@
 */
 
 import type * as t from "@vencord/discord-types";
-import { _resolveReady, filters, findByCodeLazy, findByPropsLazy, findLazy, mapMangledModuleLazy, waitFor } from "@webpack";
+import { _resolveReady, filters, findByCode, findByCodeLazy, findByPropsLazy, findLazy, mapMangledModuleLazy, waitFor } from "@webpack";
 import type * as TSPattern from "ts-pattern";
 
 export let FluxDispatcher: t.FluxDispatcher;
@@ -238,8 +238,31 @@ export const ApplicationStreamPreviewStore = findByPropsLazy("getPreviewURL");
 export const fetchApplicationsRPC = findByCodeLazy("APPLICATION_RPC(");
 
 // React DnD hooks
-export const useDrag = findByCodeLazy("useDrag", "DragSourceMonitor");
-export const useDrop = findByCodeLazy("useDrop", "DropTargetMonitor");
+// Les marqueurs historiques ("DragSourceMonitor"/"DropTargetMonitor") sont des noms de
+// types TypeScript effaces a la compilation et ne matchent plus jamais: les hooks valaient
+// null et plantaient les consommateurs (channelTabs: "An error occurred while rendering",
+// barre d'onglets morte). On fige la resolution au premier appel pour conserver un
+// comptage de hooks React stable, avec un repli sans DnD si le find echoue un jour
+// (pas de crash, juste sans glisser-deposer).
+const dndFallbackState = { isDragging: false, isOver: false, canDrop: false };
+const dndFallbackConnector = <T,>(node: T) => node;
+
+function makeDndHook(...codes: Parameters<typeof findByCode>) {
+    let impl: ((...args: any[]) => any) | null = null;
+
+    return (...args: any[]) => {
+        if (!impl) {
+            const found = findByCode(...codes);
+            impl = typeof found === "function"
+                ? found
+                : () => [dndFallbackState, dndFallbackConnector];
+        }
+        return impl(...args);
+    };
+}
+
+export const useDrag = makeDndHook("useDrag::");
+export const useDrop = makeDndHook("accept must be defined", "dropTargetOptions");
 
 // Safe ConfirmModal that won't break when Discord changes it
 import { React } from "./react";

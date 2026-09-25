@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import type { Settings as TSettings, State as TState } from "shared/settings";
 import { SettingsStore } from "shared/utils/SettingsStore";
@@ -35,6 +35,14 @@ function loadSettings<T extends object = any>(file: string, name: string) {
             settings = JSON.parse(content);
         } catch (err) {
             console.error(`Failed to parse ${name}.json:`, err);
+            // Recover from the last good backup instead of silently resetting to defaults
+            // (a kill/crash mid-write used to corrupt settings.json and wipe all plugin states)
+            try {
+                settings = JSON.parse(readFileSync(file + ".bak", "utf8"));
+                console.error(`Recovered ${name}.json from backup`);
+            } catch (err2) {
+                console.error(`Backup unreadable too, falling back to defaults:`, err2);
+            }
         }
     } catch {}
 
@@ -42,7 +50,16 @@ function loadSettings<T extends object = any>(file: string, name: string) {
     store.addGlobalChangeListener(o => {
         try {
             mkdirSync(dirname(file), { recursive: true });
-            writeFileSync(file, JSON.stringify(o, null, 4));
+            // Atomic write: a process killed mid-write can no longer corrupt settings.json
+            const tmp = file + ".tmp";
+            const data = JSON.stringify(o, null, 4);
+            writeFileSync(tmp, data);
+            renameSync(tmp, file);
+            try {
+                writeFileSync(file + ".bak", data);
+            } catch (err) {
+                console.error(`Failed to save backup of ${name}.json:`, err);
+            }
         } catch (err) {
             console.error(`Failed to save settings to ${name}.json:`, err);
         }

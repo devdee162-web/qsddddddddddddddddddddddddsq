@@ -211,22 +211,24 @@ const createWebsocket = () => {
 
     setTimeout(() => {
         if (ws?.readyState !== WebSocket.OPEN) {
-            Toasts.show({
-                message: "Orbolay websocket could not connect. Is it running?",
-                type: Toasts.Type.FAILURE,
-                id: Toasts.genId(),
-            });
+            // Pas de toast bruyant si Orbolay n'est pas lancé
+            console.warn("[OrbolayBridge] websocket could not connect — is Orbolay running?");
             ws = null;
             return;
         }
     }, 1000);
 
     // Use the configured port locally to open the websocket, but do not include it in REGISTER_CONFIG
-    ws = new WebSocket("ws://127.0.0.1:" + settings.store.port);
-    ws.onerror = e => {
+    try {
+        ws = new WebSocket("ws://127.0.0.1:" + settings.store.port);
+    } catch (e) {
+        console.warn("[OrbolayBridge] WebSocket create failed", e);
+        ws = null;
+        return;
+    }
+    ws.onerror = () => {
         ws?.close?.();
         ws = null;
-        throw e;
     };
     ws.onmessage = e => {
         incoming(JSON.parse(e.data));
@@ -280,6 +282,7 @@ export default definePlugin({
     description: "Bridge plugin to connect Orbolay to Discord",
     tags: ["Utility", "Voice"],
     authors: [EquicordDevs.SpikeHD],
+    enabledByDefault: false,
     settings,
     flux: {
         SPEAKING: handleSpeaking,

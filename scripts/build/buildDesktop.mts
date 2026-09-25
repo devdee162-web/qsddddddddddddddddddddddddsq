@@ -40,7 +40,8 @@ const NodeCommonOpts: BuildOptions = {
     },
     define: {
         IS_DEV: JSON.stringify(isDev),
-        EQUIBOP_GIT_HASH: JSON.stringify(gitHash),
+        Zcord_GIT_HASH: JSON.stringify(gitHash),
+        "process.env.ZCORD_BUILD_GIT_HASH": JSON.stringify(gitHash),
         IS_DISCORD_DESKTOP: "false",
         IS_VESKTOP: "true",
         IS_EQUIBOP: "false",

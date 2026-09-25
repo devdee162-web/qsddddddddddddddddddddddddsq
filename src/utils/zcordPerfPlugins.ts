@@ -1,10 +1,13 @@
 /*
- * Soft perf only — ne force presque rien OFF.
- * L’utilisateur garde ses plugins ; on évite juste le profiler global.
+ * Soft perf + stabilité UI.
+ * Force OFF plugins qui cassent la titlebar / spam overlays.
  */
 
 export const ZCORD_PERF_DISABLED_PLUGINS = new Set<string>([
     "clientdiagnostics",
+    "perfhud",
+    "orbolaybridge",
+    "discorddevbanner",
 ]);
 
 export function isZcordPerfForcedOff(pluginKey: string, pluginName?: string) {

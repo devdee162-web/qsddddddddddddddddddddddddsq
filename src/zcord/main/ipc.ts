@@ -80,7 +80,8 @@ if (IS_DEV) {
 
 handleSync(IpcEvents.GET_SETTINGS, () => Settings.plain);
 handleSync(IpcEvents.GET_VERSION, () => app.getVersion());
-handleSync(IpcEvents.GET_GIT_HASH, () => Zcord_GIT_HASH);
+// Injecté par esbuild define (process.env.ZCORD_BUILD_GIT_HASH) — jamais de ReferenceError
+handleSync(IpcEvents.GET_GIT_HASH, () => process.env.ZCORD_BUILD_GIT_HASH || "unknown");
 handleSync(IpcEvents.GET_ENABLE_HARDWARE_ACCELERATION, () => enableHardwareAcceleration);
 
 handleSync(

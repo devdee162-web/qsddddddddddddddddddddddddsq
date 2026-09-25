@@ -295,38 +295,14 @@ export default definePlugin({
                 match: /new Map\(\[(?=\[.{0,10}\.ACCOUNT,.{0,10}\.ACCOUNT_PANEL)/,
                 replace: "new Map([...$self.getSettingsSectionMappings(),"
             }
-        },
-        {
-            find: "#{intl::DISCODO_DISABLED}",
-            replacement: [
-                {
-                    // Remplace l'icône Accueil Discord par le logo Zcord
-                    match: /(?<=BUTTON_HOME.{0,40}children:)(\(0,\i\.jsxs?\)\(\i(?:,\{[^}]*\})?\))/,
-                    replace: "$self.ZcordHomeIcon()"
-                },
-                {
-                    // Fallback: composant Logo Discord vide utilisé comme children du home
-                    match: /(?<=BUTTON_HOME.{0,80}children:)(\(0,\i\.jsxs?\)\(\i,\{\}\))/,
-                    replace: "$self.ZcordHomeIcon()"
-                }
-            ]
         }
+        // NOTE: ne plus patcher BUTTON_HOME — cassait la barre de titre (ErrorBoundary "Oh no!").
     ],
-
-    ZcordHomeIcon: () => <ZcordIcon width={28} height={28} />,
 
     start() {
         enableStyle(iconStyles);
         enableStyle(zcordHomeIconStyle);
-        const mount = () => {
-            mountPluginsFab();
-            mountSettingsBanner();
-        };
-        if (document.body) mount();
-        else document.addEventListener("DOMContentLoaded", mount, { once: true });
-
-        this._settingsObs = new MutationObserver(() => mountSettingsBanner());
-        this._settingsObs.observe(document.documentElement, { childList: true, subtree: true });
+        // Pas de FAB / banner overlay — raccourcis clavier uniquement
 
         // Secours : Ctrl+Shift+P → modal Plugins
         this._onKey = (e: KeyboardEvent) => {

@@ -34,6 +34,8 @@ import type { Channel, Role } from "@vencord/discord-types";
 import { ChannelStore, PermissionsBits, PermissionStore, Tooltip } from "@webpack/common";
 
 import HiddenChannelLockScreen, { setChannelBeginHeader } from "./components/HiddenChannelLockScreen";
+import HiddenChannelsDbPanel from "./components/HiddenChannelsDbPanel";
+import { scanNow, startDb, stopDb } from "./hiddenChannelsDb";
 
 export const cl = classNameFactory("vc-shc-");
 
@@ -78,6 +80,18 @@ export const settings = definePluginSettings({
         description: "Whether the allowed users and roles dropdown on hidden channels should be open by default",
         type: OptionType.BOOLEAN,
         default: true
+    },
+    dbEnabled: {
+        description: "Base locale passive des salons masqués : métadonnées uniquement (aucun appel réseau, jamais le contenu des messages)",
+        type: OptionType.BOOLEAN,
+        default: true,
+        onChange(value: boolean) {
+            if (value) scanNow();
+        }
+    },
+    dbPanel: {
+        type: OptionType.COMPONENT,
+        component: HiddenChannelsDbPanel
     }
 });
 
@@ -93,6 +107,14 @@ export default definePlugin({
     authors: [Devs.BigDuck, Devs.AverageReactEnjoyer, Devs.D3SOX, Devs.Ven, Devs.Nuckyz, Devs.Nickyux, Devs.dzshn, EquicordDevs.Oggetto],
     isModified: true,
     settings,
+
+    start() {
+        void startDb();
+    },
+
+    stop() {
+        stopDb();
+    },
 
     patches: [
         {
@@ -519,6 +541,48 @@ export default definePlugin({
             replacement: {
                 match: /(function \i\(\i\)).{0,50}\.enableObfuscation\}/g,
                 replace: "$1{return false;}"
+            }
+        },
+        {
+            // Backup: force every variation of the experiment to false even if the accessor
+            // functions change shape (Vencord upstream approach)
+            find: "2026-02-private-channel-hiding",
+            replacement: {
+                match: /(?<=enableObfuscation|enableIntegrityCheck):!0/g,
+                replace: ":false"
+            }
+        },
+        {
+            // Backup: hard-flatten the Identify capability to the no-obfuscation value (1734653)
+            // so the server can never obfuscate channel names, whatever the experiment says
+            find: "useChannelObfuscation:",
+            replacement: [
+                {
+                    match: /\i\?1767421:1734653/,
+                    replace: "1734653"
+                },
+                {
+                    match: /useChannelObfuscation:\(0,\i\.\i\)\([^)]*\)/,
+                    replace: "useChannelObfuscation:false"
+                }
+            ]
+        },
+        {
+            // Show the real channel name in locked channel mention AST nodes
+            // instead of the permission-gated "No Access" label
+            find: ".canViewChannel){let n;return n={type:",
+            replacement: {
+                match: /(\i)\.roleSubscriptionGated\?\1\.name:\i\.intl\.string\(\i\.t\["\/YzI63"\]\)/,
+                replace: "$1.name"
+            }
+        },
+        {
+            // Show the real channel name in rendered channel mention pills
+            // instead of the permission-gated "No Access" label
+            find: /\.nc\)\(\i\)\?\(0,\i\.m1\)\(\i,/,
+            replacement: {
+                match: /\(0,(\i)\.nc\)\((\i)\)\?\(0,(\i)\.m1\)\(\2,(\i\.\i),(\i\.\i)\):\i\.intl\.string\(\i\.t\["\/YzI63"\]\)/,
+                replace: "(0,$3.m1)($2,$4,$5)"
             }
         }
     ],

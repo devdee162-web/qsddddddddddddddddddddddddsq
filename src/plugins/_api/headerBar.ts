@@ -12,22 +12,9 @@ export default definePlugin({
     description: "API to add buttons to the header bar and channel toolbar",
     authors: [Devs.Ven],
 
-    patches: [
-        // Patch 1 : barre de titre (header bar) - méthode Equicord Avril 2026
-        {
-            find: '?"BACK_FORWARD_NAVIGATION":',
-            replacement: {
-                match: /(?<="HELP"===.{0,75}\{\}\))(?=\])/,
-                replace: ",...Vencord.Api.HeaderBar._addHeaderBarButtons()"
-            }
-        },
-        // Patch 2 : channel toolbar
-        {
-            find: "Missing channel in Channel.renderHeaderToolbar",
-            replacement: {
-                match: /(?<=renderHeaderToolbar"\);let (\i)=\[\];)/,
-                replace: "Vencord.Api.HeaderBar._addChannelToolbarButtons($1);"
-            }
-        }
-    ]
+    // Patches titlebar désactivés : l'injection Discord 2026 cassait la barre
+    // avec ErrorBoundary "Oh no!". Les plugins peuvent encore enregistrer des
+    // boutons via l'API ; ils ne seront juste plus montés tant que le patch
+    // n'est pas réécrit pour le layout actuel.
+    patches: []
 });
