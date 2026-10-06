@@ -13,3 +13,18 @@
     font-size: 28px;
     line-height: 1;
 }
+
+.vc-status-cycler-phrase-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vc-status-cycler-phrase-row.is-off {
+    opacity: 0.55;
+}
+
+.vc-status-cycler-phrase-row .vc-status-cycler-emoji-button {
+    font-size: 20px;
+    padding: 0;
+}

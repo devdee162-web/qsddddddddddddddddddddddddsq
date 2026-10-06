@@ -6,6 +6,7 @@
 
 import "./style.css";
 
+import { ChatBarButton } from "@api/ChatButtons";
 import { definePluginSettings } from "@api/Settings";
 import { tPlugin as t } from "@api/pluginI18n";
 import { getUserSettingLazy } from "@api/UserSettings";
@@ -21,7 +22,7 @@ import definePlugin, { OptionType, type PluginNative } from "@utils/types";
 import { chooseFile } from "@utils/web";
 import type { Channel, SpotifyTrack } from "@vencord/discord-types";
 import { findComponentByCodeLazy } from "@webpack";
-import { Alerts, ChannelStore, Clickable, Popout, SelectedChannelStore, showToast, SpotifyStore as DiscordSpotifyStore, TextArea, Toasts, useRef, UserStore, useStateFromStores } from "@webpack/common";
+import { Alerts, ChannelStore, Clickable, EmojiStore, Popout, SelectedChannelStore, showToast, SpotifyStore as DiscordSpotifyStore, TextArea, TextInput, Toasts, useRef, useState, UserStore, useStateFromStores } from "@webpack/common";
 
 interface CustomStatusSetting {
     createdAtMs?: string;
@@ -80,12 +81,25 @@ interface ReactionEmojiPickerProps {
         emoji: EmojiSelectPayload | null;
         willClose: boolean;
     }): void;
-    pickerIntention: number;
+    pickerIntention?: number;
 }
 
 const ACCOUNT_SETTING_KEYS: "accountStates"[] = ["accountStates"];
 const CUSTOM_EMOJI_REGEX = /^<a?:([\w-]+):(\d+)>$/;
-const EMOJI_INTENTION = { STATUS: 1 } as const;
+const SHORTCODE_EMOJI_REGEX = /^:([\w+-]+):$/;
+const INLINE_SHORTCODE_REGEX = /:([\w+-]+):/g;
+const EMOJI_INTENTION = { STATUS: 1, CHAT: 3 } as const;
+/** Common unicode shortcodes used in status phrases */
+const DISABLED_PHRASE_PREFIX = "[off] ";
+const UNICODE_SHORTCODES: Record<string, string> = {
+    ring: "💍",
+    heart: "❤️",
+    hearts: "💕",
+    sparkles: "✨",
+    fire: "🔥",
+    kiss: "💋",
+    smile: "😊",
+};
 const SPOTIFY_LYRIC_STALE_AFTER_SECONDS = 8;
 const SPOTIFY_LYRICS_END_GRACE_MS = 15_000;
 const logger = new Logger("StatusCycler");
@@ -97,8 +111,15 @@ const ReactionEmojiPicker = findComponentByCodeLazy<ReactionEmojiPickerProps>(
     "messageId:"
 );
 
+/** Discord settings rate limit ~1/15s; stay >= 10s and add jitter to avoid bans / frozen presence. */
+const MIN_ROTATION_SECONDS = 10;
+const MAX_BACKOFF_MS = 120_000;
+/** Empty by default — each user configures their own phrases/emojis in settings. */
+const DEFAULT_PHRASES = "";
+const DEFAULT_EMOJIS = "";
+
 let active = false;
-let intervalId: ReturnType<typeof setInterval> | undefined;
+let rotationTimeoutId: ReturnType<typeof setTimeout> | undefined;
 let lyricsTimeoutId: ReturnType<typeof setTimeout> | undefined;
 let loadingSpotifyTrackId: string | undefined;
 let spotifyLyrics: SyncedLyric[] = [];
@@ -114,6 +135,8 @@ let nextSpotifyLyricsUpdateAt = 0;
 let pendingStatusUpdate: StatusUpdate | undefined;
 let statusUpdateInFlight = false;
 let lastSpotifyStatusText: string | undefined;
+let lastAppliedStatusKey: string | undefined;
+let consecutiveStatusFailures = 0;
 const phraseIndexes = new Map<string, number>();
 const emojiIndexes = new Map<string, number>();
 
@@ -156,7 +179,9 @@ function getAccountPhrases() {
 }
 
 function getAccountEmojis() {
-    return getAccountState()?.emojis ?? settings.store.emojis;
+    const fromAccount = getAccountState()?.emojis;
+    if (typeof fromAccount === "string" && fromAccount.trim()) return fromAccount;
+    return settings.store.emojis ?? "";
 }
 
 function getSeededIndex(seed: string, length: number) {
@@ -180,20 +205,178 @@ function resetCurrentIndex(indexes: Map<string, number>) {
     indexes.set(getAccountKey(), 0);
 }
 
+interface PhraseItem {
+    text: string;
+    enabled: boolean;
+}
+
+function isRotationEnabled() {
+    return settings.store.rotationEnabled !== false;
+}
+
+function parsePhraseItems(value = getAccountPhrases()): PhraseItem[] {
+    return value.split(/\r?\n|\r/).map(line => {
+        const raw = line.trimEnd();
+        if (!raw.trim()) return null;
+        const disabled = raw.startsWith(DISABLED_PHRASE_PREFIX);
+        const text = (disabled ? raw.slice(DISABLED_PHRASE_PREFIX.length) : raw).trim();
+        if (!text) return null;
+        return { text, enabled: !disabled };
+    }).filter((item): item is PhraseItem => item != null);
+}
+
+function serializePhraseItems(items: PhraseItem[]) {
+    return items.map(item => item.enabled ? item.text : `${DISABLED_PHRASE_PREFIX}${item.text}`).join("\n");
+}
+
+function savePhraseItems(items: PhraseItem[]) {
+    setAccountState({
+        phrases: serializePhraseItems(items),
+        sourceFileName: undefined
+    });
+    restartPhraseRotation();
+}
+
+function expandPhraseShortcodes(text: string) {
+    return text.replace(INLINE_SHORTCODE_REGEX, (full, name: string) => {
+        const key = name.toLowerCase();
+        if (UNICODE_SHORTCODES[key]) return UNICODE_SHORTCODES[key];
+        // Keep custom shortcodes out of status text — they belong in the emoji field
+        return full;
+    });
+}
+
+function findCustomEmojiByName(name: string) {
+    const lower = name.toLowerCase();
+    const byName = EmojiStore?.getByName?.(name) ?? EmojiStore?.getByName?.(lower);
+    if (byName?.id) return byName;
+
+    const customMap = EmojiStore?.getCustomEmoji?.() ?? {};
+    if (customMap[name]?.id) return customMap[name];
+    if (customMap[lower]?.id) return customMap[lower];
+
+    const fromValues = Object.values(customMap).find(
+        (e: any) => String(e?.name ?? "").toLowerCase() === lower
+    );
+    if (fromValues?.id) return fromValues;
+
+    try {
+        const grouped = EmojiStore?.getGroupedCustomEmoji?.() ?? {};
+        for (const list of Object.values(grouped)) {
+            const hit = (list as any[])?.find?.(e => String(e?.name ?? "").toLowerCase() === lower);
+            if (hit?.id) return hit;
+        }
+    } catch { /* ignore */ }
+
+    return null;
+}
+
+function resolveStatusEmoji(raw: string): StatusEmoji | null {
+    const emoji = raw.trim();
+    if (!emoji) return null;
+
+    const customMarkup = emoji.match(CUSTOM_EMOJI_REGEX) || emoji.match(/^<(a)?:([\w-]+):(\d+)>$/);
+    if (customMarkup) {
+        // Support both <a?:name:id> (2 groups) and <(a)?:name:id> (3 groups)
+        const name = customMarkup[2] && customMarkup[3] ? customMarkup[2] : customMarkup[1];
+        const id = customMarkup[3] ?? customMarkup[2];
+        return { emojiId: id, emojiName: name };
+    }
+
+    const shortcode = emoji.match(SHORTCODE_EMOJI_REGEX);
+    if (shortcode) {
+        const name = shortcode[1];
+        const fromStore = findCustomEmojiByName(name);
+        if (fromStore?.id) {
+            return { emojiId: String(fromStore.id), emojiName: String(fromStore.name ?? name) };
+        }
+        logger.warn(`Custom emoji :${name}: introuvable — choisis-le via le picker (<:nom:id>)`);
+        return null;
+    }
+
+    const unicodeKey = emoji.toLowerCase().replace(/^:|:$/g, "");
+    if (UNICODE_SHORTCODES[unicodeKey]) {
+        return { emojiId: "0", emojiName: UNICODE_SHORTCODES[unicodeKey] };
+    }
+
+    return { emojiId: "0", emojiName: emoji };
+}
+
 function getPhrases(value = getAccountPhrases()) {
-    return value.split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean);
+    return parsePhraseItems(value)
+        .filter(item => item.enabled)
+        .map(item => expandPhraseShortcodes(item.text))
+        .filter(Boolean);
 }
 
 function getEmojis(value = getAccountEmojis()): StatusEmoji[] {
-    return value.split(/\r?\n|\r/).map(line => {
-        const emoji = line.trim();
-        const customEmoji = emoji.match(CUSTOM_EMOJI_REGEX);
+    return value
+        .split(/\r?\n|\r/)
+        .map(resolveStatusEmoji)
+        .filter((emoji): emoji is StatusEmoji => !!emoji?.emojiName);
+}
 
-        return {
-            emojiId: customEmoji?.[2] ?? "0",
-            emojiName: customEmoji?.[1] ?? emoji
-        };
-    }).filter(emoji => emoji.emojiName);
+function formatPickerEmoji(emoji: EmojiSelectPayload | null) {
+    if (!emoji) return null;
+    if (emoji.id && emoji.name) {
+        return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
+    }
+    return emoji.optionallyDiverseSequence?.trim() || emoji.name?.trim() || null;
+}
+
+function appendToLastLine(text: string, piece: string) {
+    const lines = text.split(/\r?\n/);
+    if (!lines.length || (lines.length === 1 && !lines[0])) return piece;
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = `${last}${piece}`;
+    return lines.join("\n");
+}
+
+function DiscordEmojiPickerButton({
+    onSelect,
+    intention = EMOJI_INTENTION.CHAT,
+    label,
+}: {
+    onSelect(value: string): void;
+    intention?: number;
+    label?: string;
+}) {
+    const triggerRef = useRef<HTMLDivElement>(null);
+    const channel = useStateFromStores([SelectedChannelStore, ChannelStore], () => {
+        const channelId = SelectedChannelStore.getChannelId();
+        return channelId ? ChannelStore.getChannel(channelId) : null;
+    });
+
+    return (
+        <Popout
+            position="top"
+            align="left"
+            targetElementRef={triggerRef}
+            renderPopout={({ closePopout }) => (
+                <ReactionEmojiPicker
+                    channel={channel}
+                    closePopout={closePopout}
+                    pickerIntention={intention}
+                    onSelectEmoji={({ emoji, willClose }) => {
+                        const selected = formatPickerEmoji(emoji);
+                        if (selected) onSelect(selected);
+                        if (willClose) closePopout();
+                    }}
+                />
+            )}
+        >
+            {popoutProps => (
+                <div {...popoutProps} ref={triggerRef}>
+                    <Clickable
+                        aria-label={label ?? t("Ajouter un emoji Discord")}
+                        className="vc-status-cycler-emoji-button"
+                    >
+                        😀
+                    </Clickable>
+                </div>
+            )}
+        </Popout>
+    );
 }
 
 function phrasesHavePriority() {
@@ -272,6 +455,40 @@ function isCurrentSpotifyUpdate(update: NonNullable<StatusUpdate["spotify"]>, te
     return true;
 }
 
+function statusKey(value: CustomStatusSetting) {
+    return `${value.text}\0${value.emojiId}\0${value.emojiName}`;
+}
+
+function getSafeRotationMs() {
+    const seconds = Math.max(MIN_ROTATION_SECONDS, Number(settings.store.rotationInterval) || MIN_ROTATION_SECONDS);
+    // ±20% jitter so the cycle does not look mechanical / bot-like
+    const jitter = 0.8 + Math.random() * 0.4;
+    const backoff = consecutiveStatusFailures
+        ? Math.min(MAX_BACKOFF_MS, MIN_ROTATION_SECONDS * 1_000 * 2 ** consecutiveStatusFailures)
+        : 0;
+    return Math.round(seconds * 1_000 * jitter) + backoff;
+}
+
+function clearRotationTimer() {
+    if (rotationTimeoutId !== undefined) {
+        clearTimeout(rotationTimeoutId);
+        rotationTimeoutId = undefined;
+    }
+}
+
+function scheduleNextRotation(immediate = false) {
+    clearRotationTimer();
+    if (!active || !isRotationEnabled() || spotifyOverrideActive) return;
+    if (!getPhrases().length && !getEmojis().length) return;
+
+    const delay = immediate ? 0 : getSafeRotationMs();
+    rotationTimeoutId = setTimeout(() => {
+        rotationTimeoutId = undefined;
+        applyNextStatus();
+        if (active && !spotifyOverrideActive) scheduleNextRotation();
+    }, delay);
+}
+
 function updateStatus(update: StatusUpdate) {
     if (statusUpdateInFlight || !CustomStatusSettings) {
         pendingStatusUpdate = update;
@@ -284,6 +501,11 @@ function updateStatus(update: StatusUpdate) {
             pendingStatusUpdate = undefined;
             updateStatus(next);
         }
+        return;
+    }
+
+    const key = statusKey(update.value);
+    if (!update.spotify?.clearStale && key === lastAppliedStatusKey) {
         return;
     }
 
@@ -302,7 +524,16 @@ function updateStatus(update: StatusUpdate) {
     }
 
     void CustomStatusSettings.updateSetting(update.value)
-        .catch(error => logger.error(update.errorMessage, error))
+        .then(() => {
+            consecutiveStatusFailures = 0;
+            lastAppliedStatusKey = key;
+        })
+        .catch(error => {
+            consecutiveStatusFailures = Math.min(6, consecutiveStatusFailures + 1);
+            logger.error(update.errorMessage, error);
+            // Soft backoff on next tick — never force reconnect / gateway spam
+            if (active && !spotifyOverrideActive) scheduleNextRotation();
+        })
         .finally(() => {
             statusUpdateInFlight = false;
             if (pendingStatusUpdate) updateStatus(pendingStatusUpdate);
@@ -334,16 +565,16 @@ function clearStaleSpotifyLyricStatus(trackId: string, lyricIndex: number) {
 }
 
 function applyNextStatus() {
-    if (!active || spotifyOverrideActive) return;
+    if (!active || !isRotationEnabled() || spotifyOverrideActive) return;
 
     const phrases = getPhrases();
     const emojis = getEmojis();
     if ((!phrases.length && !emojis.length) || !CustomStatusSettings) return;
 
-    const current = CustomStatusSettings.getSetting();
-    let text = current?.text ?? "";
-    let emojiId = current?.emojiId ?? "0";
-    let emojiName = current?.emojiName ?? "";
+    let text = "";
+    // Always prefer configured status emoji (never keep a stale empty emoji)
+    let emojiId = "0";
+    let emojiName = "";
 
     if (phrases.length) {
         const nextIndex = takeNextIndex(phraseIndexes, phrases.length, "phrases");
@@ -351,19 +582,24 @@ function applyNextStatus() {
     }
 
     if (emojis.length) {
-        const nextEmojiIndex = takeNextIndex(emojiIndexes, emojis.length, "emojis");
+        // Single emoji → pin it; multiple → rotate
+        const nextEmojiIndex = emojis.length === 1
+            ? 0
+            : takeNextIndex(emojiIndexes, emojis.length, "emojis");
         ({ emojiId, emojiName } = emojis[nextEmojiIndex]);
     }
 
     setNextSpotifyLyricsUpdate();
 
+    logger.info("Status →", { text, emojiName, emojiId });
+
     updateStatus({
         errorMessage: "Could not update the custom status.",
         value: {
-            text,
+            text: text.slice(0, 128),
             expiresAtMs: "0",
-            emojiId,
-            emojiName,
+            emojiId: emojiId || "0",
+            emojiName: emojiName || "",
             createdAtMs: String(Date.now())
         }
     });
@@ -493,8 +729,7 @@ async function startSpotifyLyrics(track: SpotifyTrack, position?: number) {
 
     if (!spotifyOverrideActive || trackChanged) pendingStatusUpdate = undefined;
     spotifyOverrideActive = true;
-    if (intervalId !== undefined) clearInterval(intervalId);
-    intervalId = undefined;
+    clearRotationTimer();
 
     if (trackChanged) {
         spotifyLyrics = [];
@@ -592,16 +827,18 @@ function syncSpotifyLyrics(enabled: boolean) {
         .catch(error => logger.error("Could not load Spotify lyrics.", error));
 }
 
+function setRotationEnabled(enabled: boolean) {
+    if (settings.store.rotationEnabled === enabled) {
+        if (enabled) restartRotation();
+        else clearRotationTimer();
+        return;
+    }
+    settings.store.rotationEnabled = enabled;
+}
+
 function restartRotation() {
-    if (!active || spotifyOverrideActive) return;
-
-    if (intervalId !== undefined) clearInterval(intervalId);
-    intervalId = undefined;
-
-    if (!getPhrases().length && !getEmojis().length) return;
-
-    applyNextStatus();
-    intervalId = setInterval(applyNextStatus, settings.store.rotationInterval * 1_000);
+    if (!active || !isRotationEnabled() || spotifyOverrideActive) return;
+    scheduleNextRotation(true);
 }
 
 function restartPhraseRotation() {
@@ -646,26 +883,73 @@ async function importPhrases() {
 function PhrasesSetting() {
     const currentUser = useStateFromStores([UserStore], () => UserStore.getCurrentUser());
     const { accountStates } = settings.use(ACCOUNT_SETTING_KEYS);
-    const phrases = currentUser ? accountStates?.[currentUser.id]?.phrases ?? settings.store.phrases : settings.store.phrases;
+    const rawPhrases = currentUser ? accountStates?.[currentUser.id]?.phrases ?? settings.store.phrases : settings.store.phrases;
+    const items = parsePhraseItems(rawPhrases);
+    const [draft, setDraft] = useState("");
+
+    const updateItem = (index: number, patch: Partial<PhraseItem>) => {
+        savePhraseItems(items.map((item, i) => i === index ? { ...item, ...patch } : item));
+    };
+
+    const addPhrase = () => {
+        const text = draft.trim();
+        if (!text) return;
+        savePhraseItems([...items, { text, enabled: true }]);
+        setDraft("");
+    };
 
     return (
         <Flex flexDirection="column" gap="8px">
             <span>
                 {currentUser
-                    ? `${t("Custom status phrases for")} @${currentUser.username}, ${t("one per line.")}`
-                    : t("Custom status phrases for this account, one per line.")}
+                    ? `${t("Phrases de statut pour")} @${currentUser.username}`
+                    : t("Phrases de statut pour ce compte")}
+                {" — "}
+                {t("Activer, désactiver ou supprimer chaque ligne.")}
             </span>
-            <TextArea
-                value={phrases}
-                placeholder={t("First phrase\nSecond phrase\nThird phrase")}
-                onChange={value => {
-                    setAccountState({
-                        phrases: value,
-                        sourceFileName: undefined
-                    });
-                    restartPhraseRotation();
-                }}
-            />
+            {items.map((item, index) => (
+                <div key={index} className={`vc-status-cycler-phrase-row${item.enabled ? "" : " is-off"}`}>
+                    <TextInput
+                        value={item.text}
+                        onChange={value => updateItem(index, { text: value })}
+                    />
+                    <Button
+                        size="small"
+                        variant={item.enabled ? "secondary" : "positive"}
+                        onClick={() => updateItem(index, { enabled: !item.enabled })}
+                    >
+                        {item.enabled ? t("Désactiver") : t("Activer")}
+                    </Button>
+                    <Button
+                        size="small"
+                        variant="dangerPrimary"
+                        onClick={() => savePhraseItems(items.filter((_, i) => i !== index))}
+                    >
+                        {t("Supprimer")}
+                    </Button>
+                    <DiscordEmojiPickerButton
+                        label={t("Ajouter un emoji dans la phrase")}
+                        onSelect={selected => {
+                            if (CUSTOM_EMOJI_REGEX.test(selected)) {
+                                const currentEmojis = getAccountEmojis();
+                                const nextEmojis = [...currentEmojis.split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean), selected].join("\n");
+                                setAccountState({ emojis: nextEmojis });
+                                restartWithFirstEmoji();
+                                return;
+                            }
+                            updateItem(index, { text: `${item.text}${selected}` });
+                        }}
+                    />
+                </div>
+            ))}
+            <Flex alignItems="center" gap="8px">
+                <TextInput
+                    value={draft}
+                    placeholder={t("Nouvelle phrase…")}
+                    onChange={setDraft}
+                />
+                <Button size="small" onClick={addPhrase}>{t("Ajouter")}</Button>
+            </Flex>
         </Flex>
     );
 }
@@ -697,11 +981,6 @@ function EmojiSetting() {
     const currentUser = useStateFromStores([UserStore], () => UserStore.getCurrentUser());
     const { accountStates } = settings.use(ACCOUNT_SETTING_KEYS);
     const emojis = currentUser ? accountStates?.[currentUser.id]?.emojis ?? settings.store.emojis : settings.store.emojis;
-    const triggerRef = useRef<HTMLDivElement>(null);
-    const channel = useStateFromStores([SelectedChannelStore, ChannelStore], () => {
-        const channelId = SelectedChannelStore.getChannelId();
-        return channelId ? ChannelStore.getChannel(channelId) : null;
-    });
 
     return (
         <Flex flexDirection="column" gap="8px">
@@ -710,7 +989,7 @@ function EmojiSetting() {
                     ? `${t("Status emojis for")} @${currentUser.username}, ${t("one per line. Unicode, custom and animated Discord emojis are supported.")}`
                     : t("Status emojis for this account, one per line. Unicode, custom and animated Discord emojis are supported.")}
             </span>
-            <Flex alignItems="center" gap="8px">
+            <Flex alignItems="flex-start" gap="8px">
                 <TextArea
                     value={emojis}
                     placeholder={"😀\n<:custom:123456789012345678>\n<a:animated:123456789012345678>"}
@@ -719,47 +998,87 @@ function EmojiSetting() {
                         restartWithFirstEmoji();
                     }}
                 />
-                <Popout
-                    position="bottom"
-                    align="right"
-                    targetElementRef={triggerRef}
-                    renderPopout={({ closePopout }) => (
-                        <ReactionEmojiPicker
-                            channel={channel}
-                            closePopout={closePopout}
-                            pickerIntention={EMOJI_INTENTION.STATUS}
-                            onSelectEmoji={({ emoji, willClose }) => {
-                                const selectedEmoji = emoji?.id && emoji.name
-                                    ? `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`
-                                    : emoji?.optionallyDiverseSequence?.trim() || emoji?.name?.trim();
-
-                                if (selectedEmoji) {
-                                    const nextEmojis = [...emojis.split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean), selectedEmoji].join("\n");
-                                    setAccountState({ emojis: nextEmojis });
-                                    restartWithFirstEmoji();
-                                }
-                                if (willClose) closePopout();
-                            }}
-                        />
-                    )}
-                >
-                    {popoutProps => (
-                        <div {...popoutProps} ref={triggerRef}>
-                            <Clickable
-                                aria-label={t("Add emoji from Discord")}
-                                className="vc-status-cycler-emoji-button"
-                            >
-                                🤓
-                            </Clickable>
-                        </div>
-                    )}
-                </Popout>
+                <DiscordEmojiPickerButton
+                    intention={EMOJI_INTENTION.CHAT}
+                    onSelect={selected => {
+                        const nextEmojis = [...emojis.split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean), selected].join("\n");
+                        setAccountState({ emojis: nextEmojis });
+                        restartWithFirstEmoji();
+                    }}
+                />
             </Flex>
         </Flex>
     );
 }
 
 const SafeEmojiSetting = ErrorBoundary.wrap(EmojiSetting, { noop: true });
+
+function StatusEmojiIcon() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2m-3.5 8.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m8.25-1.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0M12 17.5c-2.538 0-4.71-1.528-5.708-3.7-.172-.375.086-.8.498-.8h10.42c.412 0 .67.425.498.8C16.71 15.972 14.538 17.5 12 17.5" />
+        </svg>
+    );
+}
+
+function StatusEmojiChatButton({ isMainChat }: { isMainChat: boolean; }) {
+    const triggerRef = useRef<HTMLDivElement>(null);
+    const { rotationEnabled } = settings.use(["rotationEnabled"]);
+    const channel = useStateFromStores([SelectedChannelStore, ChannelStore], () => {
+        const channelId = SelectedChannelStore.getChannelId();
+        return channelId ? ChannelStore.getChannel(channelId) : null;
+    });
+
+    if (!isMainChat) return null;
+
+    return (
+        <Popout
+            position="top"
+            align="right"
+            targetElementRef={triggerRef}
+            renderPopout={({ closePopout }) => (
+                <ReactionEmojiPicker
+                    channel={channel}
+                    closePopout={closePopout}
+                    pickerIntention={EMOJI_INTENTION.CHAT}
+                    onSelectEmoji={({ emoji, willClose }) => {
+                        const selected = formatPickerEmoji(emoji);
+                        if (selected) {
+                            if (CUSTOM_EMOJI_REGEX.test(selected)) {
+                                const currentEmojis = getAccountEmojis();
+                                const nextEmojis = [...currentEmojis.split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean), selected].join("\n");
+                                setAccountState({ emojis: nextEmojis });
+                                restartWithFirstEmoji();
+                            } else {
+                                setAccountState({
+                                    phrases: appendToLastLine(getAccountPhrases(), selected),
+                                    sourceFileName: undefined
+                                });
+                                restartPhraseRotation();
+                            }
+                        }
+                        if (willClose) closePopout();
+                    }}
+                />
+            )}
+        >
+            {popoutProps => (
+                <div {...popoutProps} ref={triggerRef}>
+                    <ChatBarButton
+                        tooltip={rotationEnabled ? "Emoji du statut (clic droit = pause)" : "Rotation en pause (clic droit = activer)"}
+                        onClick={popoutProps.onClick}
+                        onContextMenu={e => {
+                            e.preventDefault();
+                            setRotationEnabled(!isRotationEnabled());
+                        }}
+                    >
+                        <StatusEmojiIcon />
+                    </ChatBarButton>
+                </div>
+            )}
+        </Popout>
+    );
+}
 
 function SpicetifyInstallerSetting() {
     const confirmInstall = () => Alerts.show({
@@ -794,24 +1113,33 @@ function SpicetifyInstallerSetting() {
 const SafeSpicetifyInstallerSetting = ErrorBoundary.wrap(SpicetifyInstallerSetting, { noop: true });
 
 const settings = definePluginSettings({
+    rotationEnabled: {
+        type: OptionType.BOOLEAN,
+        description: t("Activer la rotation du custom status (désactiver = pause, sans tout supprimer)."),
+        default: true,
+        onChange(value: boolean) {
+            if (value) restartRotation();
+            else clearRotationTimer();
+        }
+    },
     phrases: {
         type: OptionType.COMPONENT,
         description: t("Custom status phrases, one per line."),
         component: SafePhrasesSetting,
-        default: "",
+        default: DEFAULT_PHRASES,
         onChange: restartWithFirstPhrase
     },
     emojis: {
         type: OptionType.COMPONENT,
         component: SafeEmojiSetting,
-        default: "",
+        default: DEFAULT_EMOJIS,
         onChange: restartWithFirstEmoji
     },
     rotationInterval: {
         type: OptionType.NUMBER,
-        description: t("Seconds between each custom status change."),
+        description: t("Seconds between each custom status change (min 10s — Discord rate limit safe, with random jitter)."),
         default: 10,
-        isValid: (value: number) => value >= 1 || t("Rotation interval must be at least 1 second."),
+        isValid: (value: number) => value >= MIN_ROTATION_SECONDS || t("Rotation interval must be at least 10 seconds to avoid Discord rate limits."),
         onChange: restartRotation
     },
     useSpotifyLyrics: {
@@ -860,11 +1188,16 @@ export default definePlugin({
     authors: [{ name: "irritably",
      id: 928787166916640838n }],
     tags: ["Activity", "Utility"],
-    dependencies: ["UserSettingsAPI"],
+    dependencies: ["UserSettingsAPI", "ChatInputButtonAPI"],
     settings,
+    chatBarButton: {
+        icon: StatusEmojiIcon,
+        render: StatusEmojiChatButton,
+    },
 
     start() {
         active = true;
+        consecutiveStatusFailures = 0;
         syncSpotifyLyrics(settings.store.useSpotifyLyrics);
         restartRotation();
     },
@@ -882,10 +1215,8 @@ export default definePlugin({
         pendingStatusUpdate = undefined;
         spotifyLyrics = [];
         spotifyLyricsTrackId = undefined;
-        if (intervalId !== undefined) {
-            clearInterval(intervalId);
-            intervalId = undefined;
-        }
+        // Keep last custom status — no empty flash / "disconnect" look
+        clearRotationTimer();
         if (lyricsTimeoutId !== undefined) {
             clearTimeout(lyricsTimeoutId);
             lyricsTimeoutId = undefined;
@@ -894,10 +1225,15 @@ export default definePlugin({
 
     flux: {
         CONNECTION_OPEN() {
+            // Resume quietly after reconnect — never spam gateway
             pendingStatusUpdate = undefined;
-            stopSpotifyLyrics();
-            restartRotation();
-            syncSpotifyLyrics(settings.store.useSpotifyLyrics);
+            consecutiveStatusFailures = 0;
+            if (settings.store.useSpotifyLyrics) {
+                stopSpotifyLyrics();
+                syncSpotifyLyrics(true);
+            } else {
+                restartRotation();
+            }
         },
 
         async SPOTIFY_PLAYER_STATE({ track, position, isPlaying }: SpotifyPlayerState) {

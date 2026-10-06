@@ -1025,24 +1025,54 @@ export default definePlugin({
             }
         }),
 
-        cmd("cord-customstatus", "Statut personnalisé (texte)", [
-            { name: "texte", description: "Texte (vide = clear)", type: ApplicationCommandOptionType.STRING, required: false }
+        cmd("cord-customstatus", "Statut personnalisé (texte + emoji)", [
+            { name: "texte", description: "Texte (vide = clear)", type: ApplicationCommandOptionType.STRING, required: false },
+            { name: "emoji", description: "Emoji Discord (coller depuis le picker 😀 ou <:nom:id>)", type: ApplicationCommandOptionType.STRING, required: false }
         ], async (opts, ctx) => {
-            const text = (findOption(opts, "texte", "") as string).trim();
+            let text = (findOption(opts, "texte", "") as string).trim();
+            let emojiRaw = (findOption(opts, "emoji", "") as string).trim();
+
+            const customInText = text.match(/^<(a)?:([\w-]+):(\d+)>\s*/);
+            if (!emojiRaw && customInText) {
+                emojiRaw = customInText[0].trim();
+                text = text.slice(customInText[0].length).trim();
+            }
+
+            const custom = emojiRaw.match(/^<(a)?:([\w-]+):(\d+)>$/);
+            const emojiName = custom?.[2] ?? emojiRaw;
+            const emojiId = custom?.[3] ?? "0";
+
             try {
+                if (!text && !emojiName) {
+                    if (CustomStatusSettings?.updateSetting) await CustomStatusSettings.updateSetting(null);
+                    else await RestAPI.patch({ url: "/users/@me/settings", body: { custom_status: null } });
+                    return reply(ctx.channel.id, "Custom status effacé.");
+                }
+
+                const payload = {
+                    text,
+                    emojiName: emojiName || "",
+                    emojiId: emojiId || "0",
+                    expiresAtMs: "0"
+                };
+
                 if (CustomStatusSettings?.updateSetting) {
-                    await CustomStatusSettings.updateSetting(
-                        text ? { text, emojiName: "", emojiId: "0", expiresAtMs: "0" } as any : null
-                    );
+                    await CustomStatusSettings.updateSetting(payload as any);
                 } else {
                     await RestAPI.patch({
                         url: "/users/@me/settings",
-                        body: { custom_status: text ? { text } : null }
+                        body: {
+                            custom_status: {
+                                text: text || null,
+                                emoji_name: emojiName || null,
+                                emoji_id: emojiId !== "0" ? emojiId : null
+                            }
+                        }
                     });
                 }
-            return reply(ctx.channel.id, text ? `Custom status : **${text}**` : "Custom status effacé.");
+                return reply(ctx.channel.id, `Custom status : ${emojiRaw ? `${emojiRaw} ` : ""}**${text || "—"}**`);
             } catch (e: any) {
-            return reply(ctx.channel.id, `Échec : ${e?.message ?? e}`);
+                return reply(ctx.channel.id, `Échec : ${e?.message ?? e}`);
             }
         }),
 
