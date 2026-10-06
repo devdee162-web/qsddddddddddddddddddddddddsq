@@ -1,0 +1,24 @@
+---
+description: Protect ShowHiddenChannels from force-off and "Aucun accès" regressions
+alwaysApply: true
+---
+
+# ShowHiddenChannels — ne pas casser
+
+## Interdits
+
+- Ne jamais remettre `showhiddenchannels` dans `ZCORD_PERF_DISABLED_PLUGINS` (`src/utils/zcordPerfPlugins.ts`).
+- Ne jamais le remettre dans `KEEP_OFF` de `scripts/restore-plugins.cjs`.
+- Ne jamais le laisser hors de `KEEP_ON` / `FORCE_ON` des scripts `force-perf-off.cjs` et `restore-plugins.cjs`.
+- Ne jamais remplacer le plugin classique (patches liste des salons + lock screen) par un simple panneau de métadonnées.
+- Ne jamais inventer un contournement serveur détectable pour lire des messages hors permissions.
+
+## Comportement attendu
+
+- Le plugin doit rester activable et **ne pas se désactiver tout seul** au démarrage.
+- Les salons masqués doivent apparaître dans la barre latérale avec leurs **vrais noms** quand Discord les envoie encore.
+- Si Discord affiche **« Aucun accès » / « No Access »**, c’est l’expérience `2026-02-private-channel-hiding` : le plugin doit forcer `Not Eligible` (`EXPERIMENT_OVERRIDE_BUCKET` à `-1`) et garder les patches `enableObfuscation` / `useChannelObfuscation`.
+
+## Liste protégée
+
+Utiliser `ZCORD_NEVER_FORCE_OFF_PLUGINS` dans `src/utils/zcordPerfPlugins.ts` (`showhiddenchannels`, `experiments`).

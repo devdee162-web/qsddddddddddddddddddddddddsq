@@ -1,0 +1,4 @@
+# ShowHiddenChannels — ne pas casser (voir aussi .cursor/rules/show-hidden-channels.mdc)
+- Ne jamais forcer OFF showhiddenchannels / ShowHiddenChannels (ZCORD_PERF_DISABLED, KEEP_OFF, HEAVY).
+- Toujours garder dans KEEP_ON / FORCE_ON + ZCORD_NEVER_FORCE_OFF_PLUGINS.
+- Si « Aucun accès » : expérience 2026-02-private-channel-hiding → bucket -1 + patches obfuscation.

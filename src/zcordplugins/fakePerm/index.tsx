@@ -384,7 +384,13 @@ export default definePlugin({
                     if (!this._origMethodsMap.has(key)) {
                         const orig = target[name].bind(target);
                         this._origMethodsMap.set(key, orig);
-                        target[name] = (...args: any[]) => isEnabled ? true : orig(...args);
+                        // Ne jamais faker le bit VIEW_CHANNEL : c'est la verite de
+                        // visibilite (ShowHiddenChannels/isHiddenChannel + mentions).
+                        // FakePerm ne simule que l'UI de moderation, pas l'acces.
+                        target[name] = (...args: any[]) =>
+                            isEnabled && !(name === "can" && args[0] === PermissionsBits.VIEW_CHANNEL)
+                                ? true
+                                : orig(...args);
                     }
                 }
             }

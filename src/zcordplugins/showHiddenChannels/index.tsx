@@ -31,13 +31,40 @@ import { classNameFactory } from "@utils/css";
 import { classes } from "@utils/misc";
 import definePlugin, { OptionType } from "@utils/types";
 import type { Channel, Role } from "@vencord/discord-types";
-import { ChannelStore, PermissionsBits, PermissionStore, Tooltip } from "@webpack/common";
+import { ChannelStore, ExperimentStore, FluxDispatcher, PermissionsBits, PermissionStore, Tooltip } from "@webpack/common";
 
 import HiddenChannelLockScreen, { setChannelBeginHeader } from "./components/HiddenChannelLockScreen";
 import HiddenChannelsDbPanel from "./components/HiddenChannelsDbPanel";
 import { scanNow, startDb, stopDb } from "./hiddenChannelsDb";
 
 export const cl = classNameFactory("vc-shc-");
+
+const PRIVATE_CHANNEL_HIDING_EXPERIMENT = "2026-02-private-channel-hiding";
+
+function disablePrivateChannelHidingExperiment() {
+    try {
+        FluxDispatcher.dispatch({
+            type: "EXPERIMENT_OVERRIDE_BUCKET",
+            experimentId: PRIVATE_CHANNEL_HIDING_EXPERIMENT,
+            experimentBucket: -1
+        });
+    } catch (e) {
+        console.warn("[ShowHiddenChannels] Failed to override private-channel-hiding experiment", e);
+    }
+
+    try {
+        const bucket = ExperimentStore.getUserExperimentBucket?.(PRIVATE_CHANNEL_HIDING_EXPERIMENT);
+        if (typeof bucket === "number" && bucket > 0) {
+            console.info(
+                "[ShowHiddenChannels] Discord still assigns private-channel-hiding bucket",
+                bucket,
+                "- channel names may stay as \"Aucun accès\" until a full restart after Experiments override."
+            );
+        }
+    } catch {
+        // ExperimentStore may not expose this helper on every build.
+    }
+}
 
 const enum ShowMode {
     LockIcon,
@@ -101,7 +128,7 @@ function isUncategorized(objChannel: { channel: Channel; comparator: number; }) 
 
 export default definePlugin({
     name: "ShowHiddenChannels",
-    enabledByDefault: false,
+    enabledByDefault: true,
     description: "Show channels that you do not have access to view.",
     tags: ["Servers", "Utility"],
     authors: [Devs.BigDuck, Devs.AverageReactEnjoyer, Devs.D3SOX, Devs.Ven, Devs.Nuckyz, Devs.Nickyux, Devs.dzshn, EquicordDevs.Oggetto],
@@ -109,11 +136,19 @@ export default definePlugin({
     settings,
 
     start() {
+        disablePrivateChannelHidingExperiment();
         void startDb();
     },
 
     stop() {
         stopDb();
+    },
+
+    // Re-apply after Discord reconnects / reassigns experiments
+    flux: {
+        CONNECTION_OPEN: disablePrivateChannelHidingExperiment,
+        CONNECTION_RESUMED: disablePrivateChannelHidingExperiment,
+        USER_SETTINGS_PROTO_UPDATE: disablePrivateChannelHidingExperiment,
     },
 
     patches: [
@@ -538,48 +573,57 @@ export default definePlugin({
         },
         {
             find: "2026-02-private-channel-hiding",
-            replacement: {
-                match: /(function \i\(\i\)).{0,50}\.enableObfuscation\}/g,
-                replace: "$1{return false;}"
-            }
+            replacement: [
+                {
+                    match: /(function \i\(\i\)).{0,80}?enableObfuscation.{0,40}?\}/,
+                    replace: "$1{return{enableObfuscation:false,enableIntegrityCheck:false};}"
+                },
+                {
+                    match: /(?<=enableObfuscation|enableIntegrityCheck):!0/g,
+                    replace: ":false"
+                },
+                {
+                    match: /(?<=enableObfuscation|enableIntegrityCheck):true/g,
+                    replace: ":false"
+                }
+            ]
         },
         {
-            // Backup: force every variation of the experiment to false even if the accessor
-            // functions change shape (Vencord upstream approach)
-            find: "2026-02-private-channel-hiding",
-            replacement: {
-                match: /(?<=enableObfuscation|enableIntegrityCheck):!0/g,
-                replace: ":false"
-            }
-        },
-        {
-            // Backup: hard-flatten the Identify capability to the no-obfuscation value (1734653)
-            // so the server can never obfuscate channel names, whatever the experiment says
+            // Ask Identify for the no-obfuscation capability so Discord still sends real names
             find: "useChannelObfuscation:",
             replacement: [
                 {
-                    match: /\i\?1767421:1734653/,
+                    match: /\i\?\d+:\d+/,
                     replace: "1734653"
                 },
                 {
                     match: /useChannelObfuscation:\(0,\i\.\i\)\([^)]*\)/,
                     replace: "useChannelObfuscation:false"
+                },
+                {
+                    match: /useChannelObfuscation:!0/,
+                    replace: "useChannelObfuscation:false"
+                },
+                {
+                    match: /useChannelObfuscation:true/,
+                    replace: "useChannelObfuscation:false"
                 }
             ]
         },
         {
-            // Show the real channel name in locked channel mention AST nodes
-            // instead of the permission-gated "No Access" label
-            find: ".canViewChannel){let n;return n={type:",
+            // Show the real channel name instead of the permission-gated "No Access" / "Aucun accès" label
+            find: 't["/YzI63"]',
+            all: true,
+            noWarn: true,
             replacement: {
-                match: /(\i)\.roleSubscriptionGated\?\1\.name:\i\.intl\.string\(\i\.t\["\/YzI63"\]\)/,
+                match: /(\i)(?:\.roleSubscriptionGated)?\?\1\.name:\i\.intl\.string\(\i\.t\["\/YzI63"\]\)/g,
                 replace: "$1.name"
             }
         },
         {
             // Show the real channel name in rendered channel mention pills
-            // instead of the permission-gated "No Access" label
             find: /\.nc\)\(\i\)\?\(0,\i\.m1\)\(\i,/,
+            noWarn: true,
             replacement: {
                 match: /\(0,(\i)\.nc\)\((\i)\)\?\(0,(\i)\.m1\)\(\2,(\i\.\i),(\i\.\i)\):\i\.intl\.string\(\i\.t\["\/YzI63"\]\)/,
                 replace: "(0,$3.m1)($2,$4,$5)"

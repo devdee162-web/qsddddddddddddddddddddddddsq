@@ -45,7 +45,9 @@ export default definePlugin({
     tags: ["Activity", "Utility"],
     authors: [Devs.Ducko],
     reporterTestable: ReporterTestable.None,
-    hidden: !IS_EQUIBOP && !IS_VESKTOP && !("legcord" in window),
+    enabledByDefault: false,
+    // Zcord/Vesktop: arRPC natif — ce plugin web est inutile et affiche le bandeau d'erreur
+    hidden: IS_VESKTOP || IS_EQUIBOP || (!IS_EQUIBOP && !IS_VESKTOP && !("legcord" in window)),
 
     settingsAboutComponent: () => (
         <>
@@ -77,6 +79,11 @@ export default definePlugin({
     },
 
     async start() {
+        // Zcord / Vesktop : arRPC est géré par le process main — pas de WS :1337 ici
+        if (IS_VESKTOP || IS_EQUIBOP) {
+            return;
+        }
+
         if (ws) ws.close();
         ws = new WebSocket("ws://127.0.0.1:1337"); // try to open WebSocket
 

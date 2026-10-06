@@ -30,7 +30,19 @@ const KEEP_ON = new Set([
     "messageupdaterapi", "memberlistdecoratorsapi", "nicknameiconsapi", "headerbarapi",
     "userareaapi", "usersettingsapi", "profilecollectionsapi", "menuitemdemanglerapi",
     "dynamicimagemodalapi", "concatenatedmodules", "concatenatedcomponentextractor",
+    // Ne jamais couper : sinon OFF auto + noms "Aucun accès"
+    "showhiddenchannels",
+    "experiments",
 ]);
+
+if (HEAVY.has("showhiddenchannels") || HEAVY.has("experiments")) {
+    console.error("[force-perf-off] BUG: ShowHiddenChannels/Experiments must not be in HEAVY.");
+    process.exit(1);
+}
+if (!KEEP_ON.has("showhiddenchannels") || !KEEP_ON.has("experiments")) {
+    console.error("[force-perf-off] BUG: showhiddenchannels/experiments missing from KEEP_ON.");
+    process.exit(1);
+}
 
 const file = path.join(getZcordUserDataDir(), "settings", "settings.json");
 if (!fs.existsSync(file)) {
@@ -44,12 +56,17 @@ let off = 0;
 for (const [name, st] of Object.entries(s.plugins)) {
     if (!st || typeof st !== "object") continue;
     const key = name.toLowerCase().replace(/\s+/g, "");
-    if (HEAVY.has(key) || (!KEEP_ON.has(key) && !key.endsWith("api") && key !== "settings")) {
+    if (KEEP_ON.has(key)) continue;
+    if (HEAVY.has(key) || (!key.endsWith("api") && key !== "settings")) {
         if (st.enabled) off++;
         st.enabled = false;
     }
 }
-for (const name of ["PerfHud", "YTMDesktopRichPresence", "UI Optimisations", "NoTrack", "CommandsAPI", "Settings", "CordCommands", "ZcordCommands"]) {
+for (const name of [
+    "PerfHud", "YTMDesktopRichPresence", "UI Optimisations", "NoTrack",
+    "CommandsAPI", "Settings", "CordCommands", "ZcordCommands",
+    "ShowHiddenChannels", "Experiments",
+]) {
     s.plugins[name] = s.plugins[name] || {};
     s.plugins[name].enabled = true;
 }

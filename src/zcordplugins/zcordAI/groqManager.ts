@@ -15,7 +15,7 @@ const GROQ_MODELS = [
     "llama-3.3-70b-versatile",
     "llama3-70b-8192",
     "llama-3.1-8b-instant",
-    "gemma2-9b-it",
+    "gemma2-9b-it", 
 ] as const;
 
 let currentModelIdx = 0;

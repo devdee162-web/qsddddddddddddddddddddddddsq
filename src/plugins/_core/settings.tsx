@@ -302,9 +302,15 @@ export default definePlugin({
     start() {
         enableStyle(iconStyles);
         enableStyle(zcordHomeIconStyle);
-        // Pas de FAB / banner overlay — raccourcis clavier uniquement
+        // Pas de FAB overlay — laisse les MP lisibles
+        try {
+            localStorage.removeItem("Zcord_stealthMode");
+            localStorage.removeItem("Zcord_compactMode");
+            document.body?.classList.remove("zcord-stealth", "zcord-compact");
+        } catch { /* */ }
+        unmountPluginsFab();
 
-        // Secours : Ctrl+Shift+P → modal Plugins
+        // Ctrl+Shift+P → Plugins | Ctrl+Shift+Z → modal Zcord
         this._onKey = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === "KeyP") {
                 e.preventDefault();

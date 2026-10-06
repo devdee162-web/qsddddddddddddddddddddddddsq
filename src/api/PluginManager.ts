@@ -435,12 +435,26 @@ export const initPluginManager = onlyOnce(function init() {
         delete (SettingsStore.plain as any).__zcord_perf_v3__;
         SettingsStore.markAsChanged();
     } else {
-        // ClientDiagnostics only
+        // Force OFF uniquement la liste perf/stabilité
         for (const p of pluginsValues) {
             if (!isZcordPerfForcedOff(p.name)) continue;
             const s = SettingsStore.plain.plugins[p.name] ??= { enabled: false };
             s.enabled = false;
         }
+    }
+
+    // v5 : réactive required + enabledByDefault (sauf force-off)
+    const UNLOCK_V5 = "__zcord_unlock_plugins_v5__";
+    if (!(SettingsStore.plain as any)[UNLOCK_V5]) {
+        for (const p of pluginsValues) {
+            if (isZcordPerfForcedOff(p.name)) continue;
+            if (p.required || p.enabledByDefault) {
+                const s = SettingsStore.plain.plugins[p.name] ??= { enabled: true };
+                s.enabled = true;
+            }
+        }
+        (SettingsStore.plain as any)[UNLOCK_V5] = true;
+        SettingsStore.markAsChanged();
     }
 
     // First round-trip to mark and force enable dependencies

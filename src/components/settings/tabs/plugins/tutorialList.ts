@@ -73,7 +73,6 @@ export const TUTORIAL_VIDEOS: ReadonlyMap<string, string> = new Map([
     ["SelfDestruct", "SelfDestruct"],
     ["ServerCloner", "ServerCloner"],
     ["SharePerms", "SharePerms"],
-    ["ShowHiddenChannels", "ShowHiddenChannels"],
     ["ShowHiddenThings", "ShowHiddenThings"],
     ["ShowID", "showid"],
     ["SilentDelete", "SilentDelete"],
